@@ -7,13 +7,17 @@ Derived from Ed Prachts python implementation
 
 @author: Daniel Brenner
 """
-from __future__ import division
+from __future__ import division, print_function
 
 import numpy as np
+import sys
 from numpy import sin as sin
 from numpy import cos as cos
 from numpy import exp as exp
 from numpy import abs as abs
+
+# data type sued for epg operations - default is double complex (complex128)
+DTYPE = "complex128"
 
 
 class EpyG(object):
@@ -31,74 +35,100 @@ class EpyG(object):
 
     # Alternatively allow here to construct the EPG from another EPG 
 
-    def __init__(self, meq=1.0, initial_size=256, m0 = None):
+    def __init__(self, initial_size=256, m0=1.0):
         '''
         Constructs EpyG object
 
-        :param meq: equilibrium magnetisation
-        :type meq: scalar, floating point
         :param initial_size: initial size of the state vector
-        :type initial_size: scalar, psotive integer
-        :param m0: initial magnetisation - either specifiy or use None to set it to meq
+        :type initial_size: scalar, positive integer
+        :param m0: initial magnetisation of Fz_0
         :type m0: scalar, double or None
 
         '''
         # State vector: index 0,1 transverse dephased states; index 2 longitudinal dephased states 
-        self.state     = np.zeros((3 , initial_size), dtype=complex) # Should encapsulate the state and make it a property
-        self.meq       = meq
-        self.state[2,0]= meq if (m0 == None) else m0 # Use meq as equilibrium magnetisation; otherwise use the specified m0
+        self.state      = np.zeros((3 , initial_size), dtype=DTYPE)  # Should encapsulate the state and make it a property
+        self.state[2, 0]= m0 # Use meq as equilibrium magnetisation; otherwise use the specified m0
         self.max_state = 0 # Maximum order of occupied states
 
-
-    def copy(self, other_epg):
+    @staticmethod
+    def copy(other_epg):
         '''
         Copies an existing epg
         '''
-        raise NotImplementedError("This has yet to come...")
-
+        new_epg = EpyG(initial_size=other_epg.size, m0=1.0)
+        new_epg.max_state = other_epg.max_state
+        new_epg.state = other_epg.state.copy()
+        return new_epg
 
     def resize(self, new_size):
         '''
-        Resizes the internal storage for the epg. Throws exception if new size is smaller than the old one
+        Resizes the internal storage for the epg. Will also shrink the EPG without warning(!)
 
-        :param new_size: new size of the state vector
+        :param new_size: new size of the state vector (number of states)
         :type new_size: scalar, positive integer
         '''
         if new_size < self.size():
-            self.state = self.state[:,0:new_size]
+            self.state = self.state[:, 0:new_size]
         else:
-            self.state.resize((3,new_size)) 
+            self.state.resize((3, new_size))
 
-
-    def extend(self):
+    def extend(self, increment=None):
         '''
         Extends the internal state vector to a suitable (guessed) size
         '''
-        raise NotImplementedError("Nothing here yet...")
+        if increment is None:
+            new_size = self.size()*2
+        else:
+            new_size = self.size() + increment
 
+        return self.resize(new_size)
 
     def size(self):
+        '''
+        Size of the EPG
+
+        Returns
+        -------
+        integer giving the current size - shape of the EPG array
+
+        '''
         return self.state.shape[1]
 
-
-    def compact(self, threshold, compact_memory=False):
+    def compact(self, threshold=1e-12, compact_memory=False):
         '''
         Compacts the EPG -> i.e. zeroes all states below the given threshold and reduces the max_state attribute.
         Will only reduce memory when argument compact_memory is set
-        '''
-        raise NotImplementedError("This method will come very very late...")
 
+        :param threshold: States below this threshold are considered "empty"
+        :param compact_memory: Will reduce size of the EPG to non-zero states
+
+        :returns:
+        Nothing
+        '''
+        #TODO DANGER UNTESTED!
+
+        mask = np.abs(self.state) < threshold
+        mask = np.all(mask, axis=0, keepdims=False)
+        self.state[:, mask] = 0.0
+        self.max_state = np.max(np.argwhere(mask))
+
+        # Make sure to remove all zero states
+        if compact_memory:
+            print("Not tested! Beware", file=sys.stderr)
+            newstate = np.zeros((3, self.max_state+1), dtype=DTYPE)
+            newstate[:, :] = self.state[0, self.max_state]
+            self.state = self.max_state
+
+        return self
 
     def __len__(self):
         return self.size()
 
-    
     def get_state_matrix(self):
         '''
         Returns the reduced state representation as a 3xN matrix (F+,F-,Z)
         '''
-        return self.state[:,0:self.max_state+1]
-
+        return self.state[:, 0:self.max_state+1]
 
     def get_order_vector(self):
         '''
@@ -106,30 +136,28 @@ class EpyG(object):
         '''
         return np.arange(self.max_state+1)
 
-
-    def get_Z(self, k=0):
+    def get_Z(self, order=0):
         '''
         Get the longitudinal magnetisation component k
         '''
         try:
-            return self.state[2,k]
+            return self.state[2, order]
         except IndexError: # Everything that is not populated is 0!
-            return np.arrray(0.0, dtype=complex) # TODO Here it care should be taken to return identical datatypes as when returning a matrix element           
-            
+            return np.arrray(0.0, dtype=DTYPE) # TODO Here it care should be taken to return identical datatypes as when returning a matrix element
 
-    def get_F(self, k=0, rx_phase_in_deg=0.0):
+    def get_F(self, order=0, rx_phase=0.0):
         '''
         Get the transverse magnetisation component k while being detected with
         a given receiver phase. Useful for RF spoiling
         '''
-        idx = 0 if k > 0 else 1
+        idx = 0 if order > 0 else 1  # Depending on +/- selects the corresponding state
     
-        theta = exp(-1j * np.deg2rad(rx_phase_in_deg)) 
+        theta = exp(1j * rx_phase)
     
         try:    
-            return (self.state[idx,abs(k)] * theta)
+            return (self.state[idx, abs(order)] * theta)
         except IndexError: # Everything that is not populated is 0!
-            return np.arrray(0.0, dtype=complex)            
+            return np.arrray(0.0, dtype=DTYPE)
         
         
 class Operator(object):
@@ -140,19 +168,29 @@ class Operator(object):
     Operators should encapsulate a abstract modification of the spin sates - 
     e.g. for example for relaxation times only the direct exponentials are supplied.
 
-    For physical simulation there shall be anohter layer that ties the operators together...
+    For physical simulation there shall be another layer that ties the operators together...
     '''
 
-    def __init__(self):
-        self.count = 0 # How often has this operator been called
-     
+    def __init__(self, name=""):
+        self.count = 0  # How often has this operator been called
+        self.name = name # Optional name for operators
+
     def apply(self, epg):
-        self.count += 1 # Count applications of the operator
+        self.count += 1  # Count applications of the operator
         return epg
 
     def __mul__(self, epg):
         # Overload multiplication just calling the apply method - intentionally rmul is not defined!
+        # TODO This has to move to the apply method to have it called always
+        if not hasattr(epg, "state"):
+            raise NotImplementedError("Can not apply operator to non-EPGs")
         return self.apply(epg)
+
+    def __call__(self, other):
+        return self.apply(other)
+
+    def __str__(self):
+        return self.__class__.__name__
 
 
 class Transform(Operator):
@@ -176,7 +214,7 @@ class Transform(Operator):
     @alpha.setter
     def alpha(self, value):
         self._alpha = value
-        self.calc_matrix() # Recalculate transformation matrix automatically
+        self._changed = True
 
     @property
     def phi(self):
@@ -189,20 +227,22 @@ class Transform(Operator):
         Setting this value will cause recalculation of the internal rotation matrix.
         '''
         self._phi = value
-        self.calc_matrix() # Recalculate transformation matrix automatically
+        self._changed = True  # Recalculate transformation matrix automatically
 
-    def __init__(self, alpha, phi):
-        super(Transform, self).__init__()
-        self._R = np.asmatrix(np.zeros((3, 3), dtype=complex))
+    def __init__(self, alpha, phi, *args, **kwargs):
+        super(Transform, self).__init__(*args, **kwargs)
+        self._R = np.zeros((3, 3), dtype=DTYPE)
         self._alpha = alpha
         self._phi = phi
-        self.calc_matrix()
+        self._changed = True
 
     def calc_matrix(self):
         # TODO CHECK WITH THE ONE FROM Hargreaves... is that correct???? <<< Seems so...
         # Recaluclates the mixing matrix using the alpha and phi members
 
-        alpha = -self._alpha #This is required for correct rotation!
+        #alpha = -self._alpha #This is required for correct rotation!
+        alpha = self._alpha
+        phi = self._phi
         co = cos(alpha)
         si = sin(alpha)
         ph = exp(self._phi * 1j)
@@ -210,6 +250,19 @@ class Transform(Operator):
         ph2 = exp(2.0 * self._phi * 1j)
         ph2_i = 1.0 / ph2
 
+        #self._R[0, 0] = cos(alpha/2.0)**2
+        #self._R[0, 1] = exp(-1j*2.0*phi)*(sin(alpha/2.0)**2)
+        #self._R[0, 2] = -1.0j/2.0*exp(-1j*phi)*si
+
+        #self._R[1, 0] = exp(2j*phi)*(sin(alpha/2.0)**2)
+        #self._R[1, 1] = cos(alpha/2.0)**2
+        #self._R[1, 2] = 1.0j/2.0*exp(1j*phi)*si
+
+        #self._R[2, 0] = -1.0j*exp(1j*phi)*si
+        #self._R[2, 1] = 1.0j*exp(-1j*phi)*si
+        #self._R[2, 2] = co
+
+        # Seems equivalent
         self._R[0, 0] =  (1.0 + co) / 2.0
         self._R[0, 1] =  ph2 * (1.0 - co) / 2.0
         self._R[0, 2] =  si * ph * 1j
@@ -221,29 +274,74 @@ class Transform(Operator):
         self._R[2, 0] =  si * ph_i / 2.0 * 1j
         self._R[2, 1] = -si * ph / 2.0 * 1j
         self._R[2, 2] =  co
-            
+
+        self._changed = False
 
     def apply(self, epg):
-        epg.state = self._R * epg.state  # TODO always does the full matrix-vector-mult. Only necessary on the reduced state vector!
+        if self._changed:
+            self.calc_matrix()
+        epg.state = np.dot(self._R, epg.state)
         return super(Transform, self).apply(epg)  # Invoke superclass method
-            
-            
+
+
+class PhaseIncrementedTransform(Transform):
+    '''
+    Phase incremented Operator to represent RF spoiling.
+    Will changed it's phase each repetition
+    '''
+
+    @property
+    def constant_phase_increment(self):
+        '''
+        RF phase will be incremented by phase_increment*i on each execution
+        '''
+        return self._constant_phase_increment
+
+    @constant_phase_increment.setter
+    def constant_phase_increment(self, value):
+        self._constant_phase_increment = value
+
+    @property
+    def linear_phase_increment(self):
+        '''
+        RF phase will be incremented by phase_increment*i on each execution
+        '''
+        return self._linear_phase_increment
+
+    @linear_phase_increment.setter
+    def linear_phase_increment(self, value):
+        self._linear_phase_increment = value
+
+    def __init__(self, alpha, phi, *args, **kwargs):
+        super(PhaseIncrementedTransform, self).__init__(alpha, phi, *args, **kwargs)
+        self._constant_phase_increment = 0.0
+        self._linear_phase_increment = 0.0
+
+    def update(self):
+        self.phi += self.count * self._linear_phase_increment
+        self.phi += self.constant_phase_increment
+        self.phi = np.mod(self.phi, 2.0*np.pi)  # Restrict the phase to aovid accumulation of numerical errors
+
+    def apply(self, epg):
+        self.update()
+        return super(PhaseIncrementedTransform, self).apply(epg)
+
+
 class Epsilon(Operator):
     '''
     The "decay operator" applying relaxation and "regrowth" of the magnetisation components.
-
-    Uses directly the relaxation exponentials $E1 = exp(-T/T1)$ and $E2 = exp(-T/T2)$.
     '''
     
-    def __init__(self, E1, E2):
-        super(Epsilon, self).__init__()        
-        self.E1 = E1 
-        self.E2 = E2
+    def __init__(self, TR_over_T1, TR_over_T2, meq=1.0, *args, **kwargs):
+        super(Epsilon, self).__init__(*args, **kwargs)
+        self._E1 = exp(-TR_over_T1)
+        self._E2 = exp(-TR_over_T2)
+        self._meq = meq
         
     def apply(self, epg):
-        epg.state[0:1,:] = epg.state[0:1,:] * self.E2               # Transverse decay
-        epg.state[2  ,:] = epg.state[  2,:] * self.E1               # Longitudinal decay
-        epg.state[2  ,0] = epg.state[  2,0] + epg.meq*(1.0-self.E1) # Regrowth of Mz
+        epg.state[0:1,:] *= self._E2                   # Transverse decay
+        epg.state[2  ,:] *= epg.state[2,:] * self._E1  # Longitudinal decay
+        epg.state[2  ,0] += self._meq*(1.0-self._E1)   # Regrowth of Mz
         
         return super(Epsilon, self).apply(epg)
         
@@ -262,26 +360,31 @@ class Shift(Operator):
 
     '''
 
-    def __init__(self, shifts=1):
-        super(Shift, self).__init__()
+    def __init__(self, shifts=1, autogrow=True, *args, **kwargs):
+        super(Shift, self).__init__(*args, **kwargs)
         self.shifts = shifts
-        
+        self._autogrow = autogrow
+
     def apply(self, epg):
         epg.max_state += self.shifts # TODO Increment the state counter -> be careful here... if exception occurs max_state will have wrong value
 
-        try:
-            if self.shifts > 0: # Here we handle positive shifts !!! NEED TO DOUBLE CHECK THIS !!!
-                epg.state[0,self.shifts:epg.max_state]   = epg.state[0, 0:epg.max_state-self.shifts] # Shift first row to the right
-                epg.state[0,0   ]              = epg.state[1, 0   ]              # Shift this one up (dephased transverse crosses zero)
-                epg.state[1,0:epg.max_state-1] = epg.state[1, 1:epg.max_state-2] # Shift this one left
-            else: # TODO Here we handle positive shifts - not implemented yet
-                raise NotImplementedError("No negative shifts yet!")
+        if self._autogrow and epg.max_state > epg.size():
+            epg.extend()
 
-        except ValueError:
-            # Here do the following -> resize the epg and rerun the shifting - this is ok as the first command will alywas fail
-            # if max_state exceeds the capacity of the vector
-            raise ValueError("Shift would exceed maximum state vector size!")
-        
+        # TODO Make multiple shifts happen without the for loop
+        for i in xrange(np.abs(self.shifts)):
+            if self.shifts > 0: # Here we handle positive shifts !!! NEED TO DOUBLE CHECK THIS !!!
+                #epg.state[0,self.shifts+1:epg.max_state+self.shifts+1]   = epg.state[0, 0:epg.max_state+1] # Shift first row to the right
+                epg.state[0, 1:] = epg.state[0, 0:-1]
+
+                # Shift this one up (dephased transverse crosses zero)
+                #epg.state[1,0:epg.max_state] = epg.state[1, 1:epg.max_state-1] # Shift this one left
+                epg.state[1,0:-1] = epg.state[1, 1:] # Shift this one left
+                epg.state[0,0 ] = np.conj(epg.state[1, 0   ])
+            else:  # TODO CHECK THIS PART!
+                epg.state[1,1:] = epg.state[1, 0:-1]
+                epg.state[0, 0:-1] = epg.state[0, 1:]
+                epg.state[1,0 ] = np.conj(epg.state[0, 0])
 
         return super(Shift, self).apply(epg)
         
@@ -295,12 +398,11 @@ class Diffusion(Operator):
 
     def __init__(self, d):
         '''
-        :param d: dimension less diffustion damping constant - corresponding to b*D were D is diffusivity and b is "the b-value"
+        :param d: dimension less diffusion damping constant - corresponding to b*D were D is diffusivity and b is "the b-value"
         :type d: scalar, floating point
         '''
         super(Diffusion, self).__init__()
-        self.d = d
-
+        self._d = d
 
     def apply(self, epg):
         '''
@@ -308,17 +410,149 @@ class Diffusion(Operator):
         Uses nomenclature from Nehrke et al.
         '''
 
-        l = epg.get_order_vector() # Does this work??????
+        l = epg.get_order_vector()
         lsq = l*l
-        Db1 = self.d*lsq
-        Db2 = self.d*(lsq + l + 1.0/3.0)
+        Db1 = self._d*lsq
+        Db2 = self._d*(lsq + l + 1.0/3.0)
 
-        ED1 =exp(-Db1)
-        ED2 =exp(-Db2)
+        ED1 = exp(-Db1)
+        ED2 = exp(-Db2)
 
-        epg.state[0 ,:] = epg.state[0 ,:] * ED2     # Transverse damping
-        epg.state[1 ,:] = epg.state[1 ,:] * ED2     # Transverse damping
-        epg.state[2 ,:] = epg.state[2 ,:] * ED1     # Longitudinal damping
+        epg.state[0, :] *= ED2     # Transverse damping
+        epg.state[1, :] *= ED2     # Transverse damping
+        epg.state[2, :] *= ED1     # Longitudinal damping
 
         return super(Diffusion, self).apply(epg)
+
+
+class Spoil(Operator):
+    '''
+    Non-physical spoiling operator that zeros all transverse states
+    '''
+
+    def __init__(self, compact_states=False, *args, **kwargs):
+        super(Spoil, self).__init__(*args, **kwargs)
+        self.compact_states=compact_states
+
+    def apply(self, epg):
+        epg.state[0, :] = 0.0
+        epg.state[1, :] = 0.0
+        if self.compact_states:
+            epg.compact()
+
+        return super(Spoil, self).apply(epg)
+
+
+class Observer(Operator):
+    '''
+    Stores EPG values - does NOT modify the EPG
+    '''
+
+    def __init__(self, F_states=(0,), Z_states=(0,), rx_phase=0.0):
+        super(Observer, self).__init__()
+        self._data_dict_f = dict()
+        self._data_dict_z = dict()
+        self.rx_phase = rx_phase  # Tramsverse detection phase
+
+        for f_state in F_states:
+            self._data_dict_f[f_state] = []
+
+        for z_state in Z_states:
+            self._data_dict_z[z_state] = []
+
+    def get_F(self, order):
+        '''
+        Returns recorded transverse states
+
+        Parameters
+        ----------
+        order: order of the state
+
+        Returns
+        -------
+        Numpy array containing amplitude of the states
+
+        '''
+        return np.asarray(self._data_dict_f[order], dtype=DTYPE)
+
+    def get_Z(self, order):
+        '''
+
+        Return recorded Z states
+
+        Parameters
+        ----------
+        order: order of the state
+
+        Returns
+        -------
+        Numpy array containing amplitude of the states
+
+        '''
+        return np.asarray(self._data_dict_z[order], dtype=DTYPE)
+
+    def apply(self, epg):
+
+        for f_state in self._data_dict_f:
+            self._data_dict_f[f_state].append(epg.get_F(order=f_state, rx_phase=self.rx_phase))
+
+        for z_state in self._data_dict_z:
+            self._data_dict_z[z_state].append(epg.get_Z(order=z_state))
+
+        return super(Observer, self).apply(epg)
+
+
+class CompositeOperator(Operator):
+    """
+    Composite operator that contains several operators
+
+    """
+
+    def __init__(self, operators=()):
+        super(CompositeOperator, self).__init__()
+        self._operators = list(operators)
+
+    def prepend(self, operator):
+        self._operators.insert(0, operator)
+        return self
+
+    def append(self, operator):
+        self._operators.append(operator)
+        return self
+
+    def apply(self, epg):
+        """
+        Applies the composite operator to an EPG by consecutive application of the contained operators
+
+        Parameters
+        ----------
+        epg to be operated on
+
+        Returns
+        -------
+        epg after operator application
+
+        """
+        epg_dash = epg
+        for op in reversed(self._operators):
+            epg_dash = op.apply(epg_dash)
+
+        return epg_dash
+
+    def __mul__(self, other):
+        if hasattr(other, "state"):
+            return self.apply(other)
+        elif isinstance(other, Operator):
+            return self.append(other)
+        else:
+            raise NotImplementedError("Object can not be added to composite operator")
+
+    def __rmul__(self, other):
+        if isinstance(other, Operator):
+            self.prepend(other)
+        else:
+            raise NotImplementedError("No viable multiplication for composite operator")
+
+
+
 
