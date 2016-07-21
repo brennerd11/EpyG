@@ -13,6 +13,7 @@ from collections import OrderedDict
 
 import numpy as np
 import sys
+import uuid
 from numpy import sin as sin
 from numpy import cos as cos
 from numpy import exp as exp
@@ -300,7 +301,11 @@ class Operator(object):
 
     def __init__(self, name=""):
         self.count = 0  # How often has this operator been called
-        self.name = name  # Optional name for operators
+
+        if name:
+            self.name = name  # Optional name for operators
+        else:
+            self.name = str(uuid.uuid4())  # Unique names for easier possibility of serialisation
 
     def apply(self, epg):
         self.count += 1  # Count applications of the operator
@@ -311,25 +316,43 @@ class Operator(object):
         # TODO This has to move to the apply method to have it called always
         if isinstance(other, Operator):
             return CompositeOperator(self, other)
-        elif not hasattr(other, "state"):
-            raise NotImplementedError("Can not apply operator to non-EPGs")
-        else:
+        elif hasattr(other, "state"):
             return self.apply(other)
+        else:
+            raise NotImplementedError("Can not apply operator to non-EPGs")
 
     def __call__(self, other):
         return self.apply(other)
 
-    def __str__(self):
-        return self.__class__.__name__
-
     def _repr_json_(self):
         reprjsondict = OrderedDict()
-        reprjsondict["type"] = self.__class__.__name__
+        reprjsondict["__type__"] = self.__class__.__name__
         reprjsondict["name"] = self.name
         reprjsondict["count"] = self.count
 
         return reprjsondict
 
+    def _repr_html_(self):
+        infodict = self._repr_json_()
+        reprstr = ["<b>" + infodict["__type__"] + "</b>"]
+        del infodict["__type__"]
+
+        for key in infodict.keys():
+            val = infodict[key]
+            reprstr.append("<i>" + str(key) + "</i>" + "=" + str(val))
+
+        return " ".join(reprstr)
+
+    def __str__(self):
+        infodict = self._repr_json_()
+        reprstr = [infodict["__type__"]]
+        del infodict["__type__"]
+
+        for key in infodict.keys():
+            val = infodict[key]
+            reprstr.append(str(key) + "=" + str(val))
+
+        return " ".join(reprstr)
 
 class Transform(Operator):
     '''
@@ -388,19 +411,7 @@ class Transform(Operator):
         ph2 = exp(2.0 * phi * 1j)
         ph2_i = 1.0 / ph2
 
-        #self._R[0, 0] = cos(alpha/2.0)**2
-        #self._R[0, 1] = exp(-1j*2.0*phi)*(sin(alpha/2.0)**2)
-        #self._R[0, 2] = -1.0j/2.0*exp(-1j*phi)*si
 
-        #self._R[1, 0] = exp(2j*phi)*(sin(alpha/2.0)**2)
-        #self._R[1, 1] = cos(alpha/2.0)**2
-        #self._R[1, 2] = 1.0j/2.0*exp(1j*phi)*si
-
-        #self._R[2, 0] = -1.0j*exp(1j*phi)*si
-        #self._R[2, 1] = 1.0j*exp(-1j*phi)*si
-        #self._R[2, 2] = co
-
-        # Seems equivalent
         self._R[0, 0] =  (1.0 + co) / 2.0
         self._R[0, 1] =  ph2 * (1.0 - co) / 2.0
         self._R[0, 2] =  si * ph * 1j
@@ -427,6 +438,7 @@ class Transform(Operator):
         reprjsondict["phi"] = self._phi
 
         return reprjsondict
+
 
 class PhaseIncrementedTransform(Transform):
     '''
@@ -456,15 +468,16 @@ class PhaseIncrementedTransform(Transform):
     def linear_phase_increment(self, value):
         self._linear_phase_increment = value
 
-    def __init__(self, alpha, phi, *args, **kwargs):
+    def __init__(self, alpha, phi, linear_phase_inc = 0.0, const_phase_inc = 0.0, *args, **kwargs):
         super(PhaseIncrementedTransform, self).__init__(alpha, phi, *args, **kwargs)
-        self._constant_phase_increment = 0.0
-        self._linear_phase_increment = 0.0
+        self._constant_phase_increment = const_phase_inc
+        self._linear_phase_increment = linear_phase_inc
 
     def update(self):
         self.phi += self.count * self._linear_phase_increment
         self.phi += self.constant_phase_increment
-        self.phi = np.mod(self.phi, 2.0*np.pi)  # Restrict the phase to aovid accumulation of numerical errors
+        self.phi = np.mod(self.phi, 2.0*np.pi)  # Restrict the phase to avoid accumulation of numerical errors
+        self._changed = True
 
     def apply(self, epg):
         self.update()
@@ -548,7 +561,7 @@ class Shift(Operator):
         return super(Shift, self).apply(epg)
 
     def _repr_json_(self):
-        reprjsondict =  super(Shift, self)._repr_json_()
+        reprjsondict = super(Shift, self)._repr_json_()
         reprjsondict["shifts"] = self.shifts
 
         return reprjsondict
@@ -644,7 +657,11 @@ class Observer(Operator):
         Numpy array containing amplitude of the states
 
         '''
-        return np.asarray(self._data_dict_f[order], dtype=DTYPE)
+        try:
+            return np.asarray(self._data_dict_f[order], dtype=DTYPE)
+        except KeyError:
+            raise KeyError("State was not recorded!")
+
 
     def get_Z(self, order):
         '''
@@ -660,7 +677,11 @@ class Observer(Operator):
         Numpy array containing amplitude of the states
 
         '''
-        return np.asarray(self._data_dict_z[order], dtype=DTYPE)
+        try:
+            return np.asarray(self._data_dict_z[order], dtype=DTYPE)
+        except KeyError:
+            raise KeyError("State was not recorded!")
+
 
     def apply(self, epg):
 
@@ -701,6 +722,7 @@ class Observer(Operator):
 
         return "".join(html)
 
+
     def _repr_json_(self):
         reprjsondict = super(Observer, self)._repr_json_()
         reprjsondict["rx_phase"] = self.rx_phase
@@ -716,6 +738,7 @@ class Observer(Operator):
                                         "imag": self.get_Z(state).imag.tolist()}
 
         return reprjsondict
+
 
 class CompositeOperator(Operator):
     """
@@ -774,7 +797,24 @@ class CompositeOperator(Operator):
         reprjsondict = super(CompositeOperator, self)._repr_json_()
         reprjsondict["operators"] = OrderedDict()
 
+        # This keeps the same ordering of the operators - applications order will be reveresed(!)
         for i, op in enumerate(self._operators):
             reprjsondict["operators"][i] = op._repr_json_()
 
         return reprjsondict
+
+    def _repr_html_(self):
+        infodict = self._repr_json_()
+        reprstr = ["<b>" + infodict["__type__"] + "</b>"]
+        del infodict["__type__"]
+        del infodict["operators"]
+
+        for key in infodict.keys():
+            reprstr.append(str(key) + "=" + str(infodict[key]))
+
+        reprstr.append("<ol>")
+        for op in self._operators:
+            reprstr.append("<li>{0}</li>".format(op._repr_html_()))
+        reprstr.append("</ol>")
+
+        return " ".join(reprstr)
