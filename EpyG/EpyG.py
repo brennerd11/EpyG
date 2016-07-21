@@ -233,7 +233,7 @@ class EpyG(object):
         # Z row
         html.append("<td><b>Z</b></td>")
 
-        for state in self.state_iterator():
+        for state in self.state_iterator(thresh):
             html.append(cell_spec.format(state[1][2]))
 
         html.append("</tr>")
@@ -502,9 +502,10 @@ class Epsilon(Operator):
         self._meq = meq
         
     def apply(self, epg):
-        epg.state[0:1,:] *= self._E2                   # Transverse decay
-        epg.state[2  ,:] *= epg.state[2,:] * self._E1  # Longitudinal decay
-        epg.state[2  ,0] += self._meq*(1.0-self._E1)   # Regrowth of Mz
+        epg.state[0, :] *= self._E2  # Transverse decay
+        epg.state[1, :] *= self._E2  # Transverse decay
+        epg.state[2, :] *= self._E1  # Longitudinal decay
+        epg.state[2, 0] += self._meq*(1.0-self._E1)   # Regrowth of Mz
         
         return super(Epsilon, self).apply(epg)
 
@@ -697,23 +698,21 @@ class Observer(Operator):
         cell_spec = "<td>{0:." + str(3) + "f} </td>"
 
         html = []
-        html.append("<h3>Transverse</h3>")
-
+        html.append("<b>Observer</b>")
         html.append("<table>")
         for state in self._data_dict_f.keys():
             html.append("<tr>")
-            html.append("<td><b>{0}</b></td>".format(state))
+            html.append("<td><b>F{0}</b></td>".format(state))
             # k row
             for element in self._data_dict_f[state]:
                 html.append(cell_spec.format(element))
             html.append("</tr>")
         html.append("</table>")
 
-        html.append("<h3>Longitudinal</h3>")
         html.append("<table>")
         for state in self._data_dict_z.keys():
             html.append("<tr>")
-            html.append("<td><b>{0}</b></td>".format(state))
+            html.append("<td><b>Z{0}</b></td>".format(state))
             # k row
             for element in self._data_dict_z[state]:
                 html.append(cell_spec.format(element))
