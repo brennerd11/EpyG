@@ -76,7 +76,11 @@ class EpyG(object):
         if new_size < self.size():
             self.state = self.state[:, 0:new_size]
         else:
-            self.state.resize((3, new_size))
+            new_array = np.zeros((3, new_size), dtype=self.state.dtype)
+            new_array[:, :self.max_state+1] = self.state[:, :self.max_state+1]
+            self.state = new_array
+
+        return self
 
     def extend(self, increment=None):
         '''
@@ -537,9 +541,9 @@ class Shift(Operator):
         self._autogrow = autogrow
 
     def apply(self, epg):
-        epg.max_state += self.shifts # Increment the state counter -> be careful here... if exception occurs max_state will have wrong value
+        # Increment the state counter -> be careful here... if exception occurs max_state will have wrong value
 
-        if self._autogrow and epg.max_state > epg.size():
+        if self._autogrow and (epg.max_state + self.shifts) >= epg.size():
             epg.extend()
 
         # TODO Make multiple shifts happen without the for loop
@@ -558,6 +562,8 @@ class Shift(Operator):
                 epg.state[1, 0] = np.conj(epg.state[0, 0])
             else:  # Else is 0 shift - do nothing
                 pass
+
+        epg.max_state += self.shifts
 
         return super(Shift, self).apply(epg)
 
