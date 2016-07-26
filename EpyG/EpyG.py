@@ -76,6 +76,7 @@ class EpyG(object):
         if new_size < self.size():
             self.state = self.state[:, 0:new_size]
         else:
+            # Manual resizing - the resize method of ndarray did not work as expected
             new_array = np.zeros((3, new_size), dtype=self.state.dtype)
             new_array[:, :self.max_state+1] = self.state[:, :self.max_state+1]
             self.state = new_array
@@ -124,7 +125,7 @@ class EpyG(object):
 
         # Make sure to remove all zero states
         if compact_memory:
-            print("Not tested! Beware", file=sys.stderr)
+            print("compacting is not well tested! Beware", file=sys.stderr)
             newstate = np.zeros((3, self.max_state+1), dtype=DTYPE)
             newstate[:, :] = self.state[0, self.max_state]
             self.state = self.max_state
@@ -151,7 +152,7 @@ class EpyG(object):
         Get the longitudinal magnetisation component k
         '''
         try:
-            return self.state[2, order]
+            return self.state[2, order].copy()
         except IndexError: # Everything that is not populated is 0!
             return np.arrray(0.0, dtype=self.state.dtype)
 
@@ -160,17 +161,19 @@ class EpyG(object):
         Get the transverse magnetisation component k while being detected with
         a given receiver phase. Useful for RF spoiling
         '''
-        idx = 0 if order > 0 else 1  # Depending on +/- selects the corresponding state
-    
+        idx = 0 if order >= 0 else 1  # Depending on +/- selects the corresponding state
+
+        # TODO Somehow getting F does not work!!!!!!
+
         theta = exp(1j * rx_phase)
-    
+
         try:    
-            return (self.state[idx, abs(order)] * theta)
+            return self.state[idx, abs(order)] * theta
         except IndexError: # Everything that is not populated is 0!
             return np.arrray(0.0, dtype=DTYPE)
 
     def is_occupied(self, k, thresh=1e-6):
-        if np.any(np.abs(self.state[:,k]) > thresh):
+        if np.any(np.abs(self.state[:, k]) > thresh):
             return True
         else:
             return False
@@ -506,10 +509,10 @@ class Epsilon(Operator):
         self._meq = meq
         
     def apply(self, epg):
-        epg.state[0, :] *= self._E2  # Transverse decay
-        epg.state[1, :] *= self._E2  # Transverse decay
-        epg.state[2, :] *= self._E1  # Longitudinal decay
-        epg.state[2, 0] += self._meq*(1.0-self._E1)   # Regrowth of Mz
+        epg.state[0, :] = epg.state[0, :] * self._E2  # Transverse decay
+        epg.state[1, :] = epg.state[1, :] * self._E2  # Transverse decay
+        epg.state[2, :] = epg.state[2, :] * self._E1  # Longitudinal decay
+        epg.state[2, 0] = epg.state[2, 0] + self._meq*(1.0-self._E1)   # Regrowth of Mz
         
         return super(Epsilon, self).apply(epg)
 
@@ -639,10 +642,10 @@ class Observer(Operator):
     Stores EPG values - does NOT modify the EPG
     '''
 
-    def __init__(self, F_states=(0,), Z_states=(0,), rx_phase=0.0, *args, **kwargs):
+    def __init__(self, F_states=(0,), Z_states=(), rx_phase=0.0, *args, **kwargs):
         super(Observer, self).__init__(*args, **kwargs)
-        self._data_dict_f = dict()
-        self._data_dict_z = dict()
+        self._data_dict_f = OrderedDict()
+        self._data_dict_z = OrderedDict()
         self.rx_phase = rx_phase  # Transverse detection phase
 
         for f_state in F_states:
@@ -692,13 +695,31 @@ class Observer(Operator):
 
     def apply(self, epg):
 
-        for f_state in self._data_dict_f:
+        for f_state in self._data_dict_f.keys():
             self._data_dict_f[f_state].append(epg.get_F(order=f_state, rx_phase=self.rx_phase))
 
-        for z_state in self._data_dict_z:
+        for z_state in self._data_dict_z.keys():
             self._data_dict_z[z_state].append(epg.get_Z(order=z_state))
 
         return super(Observer, self).apply(epg)
+
+    def clear(self):
+        """
+        Clear the internal storage
+
+        Returns
+        -------
+        reference to self
+
+        """
+
+        for f_state in self._data_dict_f.keys():
+            self._data_dict_f[f_state] = []
+
+        for z_state in self._data_dict_z.keys():
+            self._data_dict_z[z_state] = []
+
+        return self
 
     def _repr_html_(self):
         cell_spec = "<td>{0:." + str(3) + "f} </td>"
@@ -779,10 +800,11 @@ class CompositeOperator(Operator):
 
         """
         epg_dash = epg
+
         for op in reversed(self._operators):
             epg_dash = op.apply(epg_dash)
 
-        return super(CompositeOperator, self).apply(epg)
+        return super(CompositeOperator, self).apply(epg_dash)
 
     def __mul__(self, other):
         if hasattr(other, "state"):
