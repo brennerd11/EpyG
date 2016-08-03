@@ -9,39 +9,39 @@ Derived from Ed Prachts python implementation
 """
 from __future__ import division, print_function
 
+import sys
+import uuid
 from collections import OrderedDict
 
 import numpy as np
-import sys
-import uuid
-from numpy import sin as sin
+from numpy import abs as abs
 from numpy import cos as cos
 from numpy import exp as exp
-from numpy import abs as abs
+from numpy import sin as sin
 
 # data type sued for epg operations - default is double complex (complex128)
 DTYPE = "complex128"
 
 
 class EpyG(object):
-    '''
+    """
     Extendded Phase Graph (EPG) object for MR multipulse simulations.
     Transparently wraps a 3xN matrix containing the full set of Fourier coefficients representing a manifold dephased magnetisation state.
     The EPG itself has no paremeters! All parameters (T1,T2,etc.) are implemented within the Operators acting on the EPG object
 
-    
+
     References
     ==========
      * Add them here.... (Scheffler, Hennig, Weigel)
 
-    '''
+    """
 
     # NOTE: This is a plain straight forward implementation where the index in the state array corresponds to the state
     # NOTE: It would be much(!) more efficient for certain applications to have a sparse state matrix and/or to abstract
     #       access to the individual states to isolate this from the actual data structure at hand. This would probably
     #       conflict with the way operators are currently used!
     def __init__(self, initial_size=256, m0=1.0):
-        '''
+        """
         Constructs EpyG object
 
         :param initial_size: initial size of the state vector
@@ -49,64 +49,64 @@ class EpyG(object):
         :param m0: initial magnetisation of Fz_0
         :type m0: scalar, double or None
 
-        '''
+        """
         # State vector: index 0,1 transverse dephased states; index 2 longitudinal dephased states 
-        self.state      = np.zeros((3 , initial_size), dtype=DTYPE)  # Should encapsulate the state and make it a property
-        self.state[2, 0]= m0  # Use meq as equilibrium magnetisation; otherwise use the specified m0
+        self.state = np.zeros((3, initial_size), dtype=DTYPE)  # Should encapsulate the state and make it a property
+        self.state[2, 0] = m0  # Use meq as equilibrium magnetisation; otherwise use the specified m0
         self.max_state = 0  # Maximum order of occupied states
         self.print_digits = 3  # Used in ipython notebooks to control precision/threshold for vis
 
     @staticmethod
     def copy(other_epg):
-        '''
+        """
         Copies an existing epg
-        '''
+        """
         new_epg = EpyG(initial_size=other_epg.size, m0=1.0)
         new_epg.max_state = other_epg.max_state
         new_epg.state = other_epg.state.copy()
         return new_epg
 
     def resize(self, new_size):
-        '''
+        """
         Resizes the internal storage for the epg. Will also shrink the EPG without warning(!)
 
         :param new_size: new size of the state vector (number of states)
         :type new_size: scalar, positive integer
-        '''
+        """
         if new_size < self.size():
             self.state = self.state[:, 0:new_size]
         else:
             # Manual resizing - the resize method of ndarray did not work as expected
             new_array = np.zeros((3, new_size), dtype=self.state.dtype)
-            new_array[:, :self.max_state+1] = self.state[:, :self.max_state+1]
+            new_array[:, :self.max_state + 1] = self.state[:, :self.max_state + 1]
             self.state = new_array
 
         return self
 
     def extend(self, increment=None):
-        '''
+        """
         Extends the internal state vector to a suitable (guessed) size
-        '''
+        """
         if increment is None:
-            new_size = self.size()*2
+            new_size = self.size() * 2
         else:
             new_size = self.size() + increment
 
         return self.resize(new_size)
 
     def size(self):
-        '''
+        """
         Size of the EPG
 
         Returns
         -------
         integer giving the current size - shape of the EPG array
 
-        '''
+        """
         return self.state.shape[1]
 
     def compact(self, threshold=1e-12, compact_memory=False):
-        '''
+        """
         Compacts the EPG -> i.e. zeroes all states below the given threshold and reduces the max_state attribute.
         Will only reduce memory when argument compact_memory is set
 
@@ -115,8 +115,8 @@ class EpyG(object):
 
         :returns:
         Nothing
-        '''
-        #TODO DANGER UNTESTED!
+        """
+        # TODO DANGER UNTESTED!
 
         mask = np.abs(self.state) < threshold
         mask = np.all(mask, axis=0, keepdims=False)
@@ -126,9 +126,9 @@ class EpyG(object):
         # Make sure to remove all zero states
         if compact_memory:
             print("compacting is not well tested! Beware", file=sys.stderr)
-            newstate = np.zeros((3, self.max_state+1), dtype=DTYPE)
+            newstate = np.zeros((3, self.max_state + 1), dtype=DTYPE)
             newstate[:, :] = self.state[0, self.max_state]
-            self.state = self.max_state
+            self.state = self.newstate
 
         return self
 
@@ -136,41 +136,39 @@ class EpyG(object):
         return self.size()
 
     def get_state_matrix(self):
-        '''
+        """
         Returns the reduced state representation as a 3xN matrix (F+,F-,Z)
-        '''
-        return self.state[:, 0:self.max_state+1]
+        """
+        return self.state[:, 0:self.max_state + 1]
 
     def get_order_vector(self):
-        '''
+        """
         Returns a vector of integers containing the dephasing order
-        '''
-        return np.arange(self.max_state+1)
+        """
+        return np.arange(self.max_state + 1)
 
-    def get_Z(self, order=0):
-        '''
+    def get_z(self, order=0):
+        """
         Get the longitudinal magnetisation component k
-        '''
+        """
         try:
             return self.state[2, order].copy()
-        except IndexError: # Everything that is not populated is 0!
-            return np.arrray(0.0, dtype=self.state.dtype)
+        except IndexError:  # Everything that is not populated is 0!
+            return np.array(0.0, dtype=self.state.dtype)
 
-    def get_F(self, order=0, rx_phase=0.0):
-        '''
+    def get_f(self, order=0, rx_phase=0.0):
+        """
         Get the transverse magnetisation component k while being detected with
         a given receiver phase. Useful for RF spoiling
-        '''
+        """
         idx = 0 if order >= 0 else 1  # Depending on +/- selects the corresponding state
-
-        # TODO Somehow getting F does not work!!!!!!
 
         theta = exp(1j * rx_phase)
 
-        try:    
+        try:
             return self.state[idx, abs(order)] * theta
-        except IndexError: # Everything that is not populated is 0!
-            return np.arrray(0.0, dtype=DTYPE)
+        except IndexError:  # Everything that is not populated is 0!
+            return np.array(0.0, dtype=DTYPE)
 
     def is_occupied(self, k, thresh=1e-6):
         if np.any(np.abs(self.state[:, k]) > thresh):
@@ -179,11 +177,11 @@ class EpyG(object):
             return False
 
     def state_iterator(self, thresh=1e-6):
-        '''
+        """
         Iterates over all non-empty states returning the tuple (k, [F+, F-, Z])
-        '''
+        """
 
-        for k in range(self.max_state+1):
+        for k in range(self.max_state + 1):
             if self.is_occupied(k, thresh):
                 yield (k, self.state[:, k])
 
@@ -193,8 +191,8 @@ class EpyG(object):
         if axis is None:
             _, axis = plt.subplots()
 
-        transverse = np.hstack((self.state[1, self.max_state+1:1:-1], self.state[0, 0:self.max_state+1]))
-        index = np.arange(-self.max_state, self.max_state+1)
+        transverse = np.hstack((self.state[1, self.max_state + 1:1:-1], self.state[0, 0:self.max_state + 1]))
+        index = np.arange(-self.max_state, self.max_state + 1)
 
         print(index.shape)
         print(transverse.shape)
@@ -267,44 +265,44 @@ class EpyG(object):
 
         return jsonrepr
 
-    # def __str__(self):
-    #     spec = "{0:6." + str(self.print_digits) + "f}"
-    #     thresh = np.power(10, -self.print_digits)
-    #
-    #     outstr = [""]
-    #
-    #     # k row
-    #     for state in self.state_iterator(thresh):
-    #         outstr.append("{0:5d}".format(state[0]))
-    #     outstr.append("\n")
-    #
-    #     # F+ row
-    #     for state in self.state_iterator(thresh):
-    #         outstr.append(spec.format(state[1][0]))
-    #     outstr.append("\n")
-    #
-    #     # F- row
-    #
-    #     for state in self.state_iterator(thresh):
-    #         outstr.append(spec.format(state[1][1]))
-    #         outstr.append("\n")
-    #     # Z row
-    #
-    #     for state in self.state_iterator():
-    #         outstr.append(spec.format(state[1][2]))
-    #
-    #     return ''.join(outstr)
+        # def __str__(self):
+        #     spec = "{0:6." + str(self.print_digits) + "f}"
+        #     thresh = np.power(10, -self.print_digits)
+        #
+        #     outstr = [""]
+        #
+        #     # k row
+        #     for state in self.state_iterator(thresh):
+        #         outstr.append("{0:5d}".format(state[0]))
+        #     outstr.append("\n")
+        #
+        #     # F+ row
+        #     for state in self.state_iterator(thresh):
+        #         outstr.append(spec.format(state[1][0]))
+        #     outstr.append("\n")
+        #
+        #     # F- row
+        #
+        #     for state in self.state_iterator(thresh):
+        #         outstr.append(spec.format(state[1][1]))
+        #         outstr.append("\n")
+        #     # Z row
+        #
+        #     for state in self.state_iterator():
+        #         outstr.append(spec.format(state[1][2]))
+        #
+        #     return ''.join(outstr)
 
 
 class Operator(object):
-    '''
+    """
     Base class of an operator acting on an epg object. Application of the operator will alter the EPG object!
     All derived operators should make sure to return the epg on application to allow operator chaining.
 
     Operators should encapsulate a abstract modification of the spin sates
 
     For physical simulation there shall be another layer that ties the operators together...
-    '''
+    """
 
     def __init__(self, name=""):
         self.count = 0  # How often has this operator been called
@@ -361,24 +359,25 @@ class Operator(object):
 
         return " ".join(reprstr)
 
+
 class Transform(Operator):
-    '''
+    """
     Operator implementing the transformation performed by application of an RF pulse
     Assumes all inputs in radians!
-    '''
-    
+    """
+
     # It would be nice to have all operators "immutable" but that would make usage difficult.
     # E.g. for RF spoiling
     # The operator implements properties which will cause correct recalculation of the matrix when changing the attributes
 
     @property
     def alpha(self):
-        '''
+        """
         Flipangle (in rad) of the Transform operator.
         Setting this value will cause recalculation of the internal rotation matrix.
-        '''
+        """
         return self._alpha
-    
+
     @alpha.setter
     def alpha(self, value):
         self._alpha = value
@@ -390,10 +389,10 @@ class Transform(Operator):
 
     @phi.setter
     def phi(self, value):
-        '''
+        """
         Phase (in rad) of the Transform operator.
         Setting this value will cause recalculation of the internal rotation matrix.
-        '''
+        """
         self._phi = value
         self._changed = True  # Recalculate transformation matrix automatically
 
@@ -408,7 +407,7 @@ class Transform(Operator):
         # CHECK WITH THE ONE FROM Hargreaves... is that correct???? <<< Seems so...
         # Recaluclates the mixing matrix using the alpha and phi members
 
-        #alpha = -self._alpha #This is required for correct rotation!
+        # alpha = -self._alpha #This is required for correct rotation!
         alpha = self._alpha
         phi = self._phi
         co = cos(alpha)
@@ -418,29 +417,29 @@ class Transform(Operator):
         ph2 = exp(2.0 * phi * 1j)
         ph2_i = 1.0 / ph2
 
+        self._R[0, 0] = (1.0 + co) / 2.0
+        self._R[0, 1] = ph2 * (1.0 - co) / 2.0
+        self._R[0, 2] = si * ph * 1j
 
-        self._R[0, 0] =  (1.0 + co) / 2.0
-        self._R[0, 1] =  ph2 * (1.0 - co) / 2.0
-        self._R[0, 2] =  si * ph * 1j
-
-        self._R[1, 0] =  ph2_i * (1.0 - co) / 2.0
-        self._R[1, 1] =  (1.0 + co) / 2.0
+        self._R[1, 0] = ph2_i * (1.0 - co) / 2.0
+        self._R[1, 1] = (1.0 + co) / 2.0
         self._R[1, 2] = -si * ph_i * 1j
 
-        self._R[2, 0] =  si * ph_i / 2.0 * 1j
+        self._R[2, 0] = si * ph_i / 2.0 * 1j
         self._R[2, 1] = -si * ph / 2.0 * 1j
-        self._R[2, 2] =  co
+        self._R[2, 2] = co
 
         self._changed = False
 
     def apply(self, epg):
         if self._changed:
             self.calc_matrix()
-        epg.state = np.dot(self._R, epg.state)
+        #epg.state = np.dot(self._R, epg.state)
+        epg.state[:, 0:epg.max_state+1] = np.dot(self._R, epg.state[:, 0:epg.max_state+1])
         return super(Transform, self).apply(epg)  # Invoke superclass method
 
     def _repr_json_(self):
-        reprjsondict =  super(Transform, self)._repr_json_()
+        reprjsondict = super(Transform, self)._repr_json_()
         reprjsondict["alpha"] = self._alpha
         reprjsondict["phi"] = self._phi
 
@@ -448,16 +447,16 @@ class Transform(Operator):
 
 
 class PhaseIncrementedTransform(Transform):
-    '''
+    """
     Phase incremented Operator to represent RF spoiling.
     Will changed it's phase each repetition
-    '''
+    """
 
     @property
     def constant_phase_increment(self):
-        '''
+        """
         RF phase will be incremented by phase_increment*i on each execution
-        '''
+        """
         return self._constant_phase_increment
 
     @constant_phase_increment.setter
@@ -466,16 +465,16 @@ class PhaseIncrementedTransform(Transform):
 
     @property
     def linear_phase_increment(self):
-        '''
+        """
         RF phase will be incremented by phase_increment*i on each execution
-        '''
+        """
         return self._linear_phase_increment
 
     @linear_phase_increment.setter
     def linear_phase_increment(self, value):
         self._linear_phase_increment = value
 
-    def __init__(self, alpha, phi, linear_phase_inc = 0.0, const_phase_inc = 0.0, *args, **kwargs):
+    def __init__(self, alpha, phi, linear_phase_inc=0.0, const_phase_inc=0.0, *args, **kwargs):
         super(PhaseIncrementedTransform, self).__init__(alpha, phi, *args, **kwargs)
         self._constant_phase_increment = const_phase_inc
         self._linear_phase_increment = linear_phase_inc
@@ -483,7 +482,7 @@ class PhaseIncrementedTransform(Transform):
     def update(self):
         self.phi += self.count * self._linear_phase_increment
         self.phi += self.constant_phase_increment
-        self.phi = np.mod(self.phi, 2.0*np.pi)  # Restrict the phase to avoid accumulation of numerical errors
+        self.phi = np.mod(self.phi, 2.0 * np.pi)  # Restrict the phase to avoid accumulation of numerical errors
         self._changed = True
 
     def apply(self, epg):
@@ -491,52 +490,52 @@ class PhaseIncrementedTransform(Transform):
         return super(PhaseIncrementedTransform, self).apply(epg)
 
     def _repr_json_(self):
-        reprjsondict =  super(PhaseIncrementedTransform, self)._repr_json_()
+        reprjsondict = super(PhaseIncrementedTransform, self)._repr_json_()
         reprjsondict["linear_phase_increment"] = self.linear_phase_increment
         reprjsondict["constant_phase_increment"] = self.constant_phase_increment
         return reprjsondict
 
 
 class Epsilon(Operator):
-    '''
+    """
     The "decay operator" applying relaxation and "regrowth" of the magnetisation components.
-    '''
-    
+    """
+
     def __init__(self, TR_over_T1, TR_over_T2, meq=1.0, *args, **kwargs):
         super(Epsilon, self).__init__(*args, **kwargs)
         self._E1 = exp(-TR_over_T1)
         self._E2 = exp(-TR_over_T2)
         self._meq = meq
-        
+
     def apply(self, epg):
         epg.state[0, :] = epg.state[0, :] * self._E2  # Transverse decay
         epg.state[1, :] = epg.state[1, :] * self._E2  # Transverse decay
         epg.state[2, :] = epg.state[2, :] * self._E1  # Longitudinal decay
-        epg.state[2, 0] = epg.state[2, 0] + self._meq*(1.0-self._E1)   # Regrowth of Mz
-        
+        epg.state[2, 0] = epg.state[2, 0] + self._meq * (1.0 - self._E1)  # Regrowth of Mz
+
         return super(Epsilon, self).apply(epg)
 
     def _repr_json_(self):
-        reprjsondict =  super(Epsilon, self)._repr_json_()
+        reprjsondict = super(Epsilon, self)._repr_json_()
         reprjsondict["E1"] = self._E1
         reprjsondict["E2"] = self._E2
         reprjsondict["meq"] = self._meq
         return reprjsondict
 
-        
+
 class Shift(Operator):
-    '''
+    """
     Implements the shift operator the corresponds to a 2PI dephasing of the magnetisation.
     More dephasings can be achieved by multiple applications of this operator! Currently only handles "positive" shifts
 
     !!! DANGER DANGER DANGER DANGER DANGER !!!
 
-    Beware! Nothing prevents loss of the corner elements if the number of dephasings exceeds the size 
+    Beware! Nothing prevents loss of the corner elements if the number of dephasings exceeds the size
     of the state vector!  This operator is absoloutely critical and needs proper testing!
 
     !!! DANGER DANGER DANGER DANGER DANGER !!!
 
-    '''
+    """
 
     def __init__(self, shifts=1, autogrow=True, *args, **kwargs):
         super(Shift, self).__init__(*args, **kwargs)
@@ -549,19 +548,21 @@ class Shift(Operator):
         if self._autogrow and (epg.max_state + self.shifts) >= epg.size():
             epg.extend()
 
+        new_max = epg.max_state + self.shifts
         # TODO Make multiple shifts happen without the for loop
+        # TODO Only shift the necessary parts of the EPG here -- does not seem to be impact speed significantly
         for i in range(np.abs(self.shifts)):
-            if self.shifts > 0: # Here we handle positive shifts !!! NEED TO DOUBLE CHECK THIS !!!
-                #epg.state[0,self.shifts+1:epg.max_state+self.shifts+1]   = epg.state[0, 0:epg.max_state+1] # Shift first row to the right
-                epg.state[0, 1:] = epg.state[0, 0:-1]
+            if self.shifts > 0:  # Here we handle positive shifts !!! NEED TO DOUBLE CHECK THIS !!!
+                # epg.state[0, 1:] = epg.state[0, 0:-1]
+                epg.state[0, 1:new_max+1] = epg.state[0, 0:new_max]
 
                 # Shift this one up (dephased transverse crosses zero)
-                #epg.state[1,0:epg.max_state] = epg.state[1, 1:epg.max_state-1] # Shift this one left
-                epg.state[1,0:-1] = epg.state[1, 1:] # Shift this one left
-                epg.state[0,0 ] = np.conj(epg.state[1, 0])
+                # epg.state[1,0:epg.max_state] = epg.state[1, 1:epg.max_state-1] # Shift this one left
+                epg.state[1, 0:new_max] = epg.state[1, 1:new_max+1]  # Shift this one left
+                epg.state[0, 0] = np.conj(epg.state[1, 0])
             elif self.shifts < 0:  # TODO CHECK THIS PART!
-                epg.state[1, 1:] = epg.state[1, 0:-1]
-                epg.state[0, 0:-1] = epg.state[0, 1:]
+                epg.state[1, 1:new_max+1] = epg.state[1, 0:new_max]
+                epg.state[0, 0:new_max] = epg.state[0, 1:new_max+1]
                 epg.state[1, 0] = np.conj(epg.state[0, 0])
             else:  # Else is 0 shift - do nothing
                 pass
@@ -575,40 +576,40 @@ class Shift(Operator):
         reprjsondict["shifts"] = self.shifts
 
         return reprjsondict
-        
+
 
 class Diffusion(Operator):
-    '''
+    """
     Simulates diffusion effects by state dependent damping of the coefficients
 
     See e.g. Nehrke et al. MRM 2009 RF Spoiling for AFI paper
-    '''
+    """
 
     def __init__(self, d, *args, **kwargs):
-        '''
+        """
         :param d: dimension less diffusion damping constant - corresponding to b*D were D is diffusivity and b is "the b-value"
         :type d: scalar, floating point
-        '''
+        """
         super(Diffusion, self).__init__(*args, **kwargs)
         self._d = d
 
     def apply(self, epg):
-        '''
+        """
         Applicaton of the operator.
         Uses nomenclature from Nehrke et al.
-        '''
+        """
 
         l = epg.get_order_vector()
-        lsq = l*l
-        Db1 = self._d*lsq
-        Db2 = self._d*(lsq + l + 1.0/3.0)
+        lsq = l * l
+        db1 = self._d * lsq
+        db2 = self._d * (lsq + l + 1.0 / 3.0)
 
-        ED1 = exp(-Db1)
-        ED2 = exp(-Db2)
+        ed1 = exp(-db1)
+        ed2 = exp(-db2)
 
-        epg.state[0, :] *= ED2     # Transverse damping
-        epg.state[1, :] *= ED2     # Transverse damping
-        epg.state[2, :] *= ED1     # Longitudinal damping
+        epg.state[0, :] *= ed2  # Transverse damping
+        epg.state[1, :] *= ed2  # Transverse damping
+        epg.state[2, :] *= ed1  # Longitudinal damping
 
         return super(Diffusion, self).apply(epg)
 
@@ -620,9 +621,9 @@ class Diffusion(Operator):
 
 
 class Spoil(Operator):
-    '''
+    """
     Non-physical spoiling operator that zeros all transverse states
-    '''
+    """
 
     def __init__(self, compact_states=False, *args, **kwargs):
         super(Spoil, self).__init__(*args, **kwargs)
@@ -638,24 +639,29 @@ class Spoil(Operator):
 
 
 class Observer(Operator):
-    '''
+    """
     Stores EPG values - does NOT modify the EPG
-    '''
+    """
 
-    def __init__(self, F_states=(0,), Z_states=(), rx_phase=0.0, *args, **kwargs):
+    def __init__(self, f_states=(0,), z_states=(), rx_phase=0.0, *args, **kwargs):
         super(Observer, self).__init__(*args, **kwargs)
         self._data_dict_f = OrderedDict()
         self._data_dict_z = OrderedDict()
         self.rx_phase = rx_phase  # Transverse detection phase
+        self._fstates = f_states
+        self._zstates = z_states
+        self._init_data_structures()
 
-        for f_state in F_states:
+    def _init_data_structures(self):
+
+        for f_state in self._fstates:
             self._data_dict_f[f_state] = []
 
-        for z_state in Z_states:
+        for z_state in self._zstates:
             self._data_dict_z[z_state] = []
 
-    def get_F(self, order):
-        '''
+    def get_f(self, order):
+        """
         Returns recorded transverse states
 
         Parameters
@@ -666,15 +672,14 @@ class Observer(Operator):
         -------
         Numpy array containing amplitude of the states
 
-        '''
+        """
         try:
             return np.asarray(self._data_dict_f[order], dtype=DTYPE)
         except KeyError:
             raise KeyError("State was not recorded!")
 
-
-    def get_Z(self, order):
-        '''
+    def get_z(self, order):
+        """
 
         Return recorded Z states
 
@@ -686,20 +691,19 @@ class Observer(Operator):
         -------
         Numpy array containing amplitude of the states
 
-        '''
+        """
         try:
             return np.asarray(self._data_dict_z[order], dtype=DTYPE)
         except KeyError:
             raise KeyError("State was not recorded!")
 
-
     def apply(self, epg):
 
         for f_state in self._data_dict_f.keys():
-            self._data_dict_f[f_state].append(epg.get_F(order=f_state, rx_phase=self.rx_phase))
+            self._data_dict_f[f_state].append(epg.get_f(order=f_state, rx_phase=self.rx_phase))
 
         for z_state in self._data_dict_z.keys():
-            self._data_dict_z[z_state].append(epg.get_Z(order=z_state))
+            self._data_dict_z[z_state].append(epg.get_z(order=z_state))
 
         return super(Observer, self).apply(epg)
 
@@ -713,11 +717,7 @@ class Observer(Operator):
 
         """
 
-        for f_state in self._data_dict_f.keys():
-            self._data_dict_f[f_state] = []
-
-        for z_state in self._data_dict_z.keys():
-            self._data_dict_z[z_state] = []
+        self._init_data_structures()
 
         return self
 
@@ -748,7 +748,6 @@ class Observer(Operator):
 
         return "".join(html)
 
-
     def _repr_json_(self):
         reprjsondict = super(Observer, self)._repr_json_()
         reprjsondict["rx_phase"] = self.rx_phase
@@ -756,14 +755,20 @@ class Observer(Operator):
         reprjsondict["Z"] = OrderedDict()
 
         for state in self._data_dict_f.keys():
-            reprjsondict["F"][state] = {"real": self.get_F(state).real.tolist(),
-                                        "imag": self.get_F(state).imag.tolist()}
+            reprjsondict["F"][state] = {"real": self.get_f(state).real.tolist(),
+                                        "imag": self.get_f(state).imag.tolist()}
 
         for state in self._data_dict_z.keys():
-            reprjsondict["Z"][state] = {"real": self.get_Z(state).real.tolist(),
-                                        "imag": self.get_Z(state).imag.tolist()}
+            reprjsondict["Z"][state] = {"real": self.get_z(state).real.tolist(),
+                                        "imag": self.get_z(state).imag.tolist()}
 
         return reprjsondict
+
+        # class SteadyStateObserver(Observer):
+        #
+        #    def __init__(self, F_states=(0,), Z_states=(), rx_phase=0.0, *args, **kwargs):
+        #  super(SteadyStateObserver, self).__init__(F_states=F_states, Z_states=Z_states, rx_phase=rx_phase,
+        #                                         *args, **kwargs)
 
 
 class CompositeOperator(Operator):
@@ -824,7 +829,7 @@ class CompositeOperator(Operator):
         reprjsondict = super(CompositeOperator, self)._repr_json_()
         reprjsondict["operators"] = OrderedDict()
 
-        # This keeps the same ordering of the operators - applications order will be reveresed(!)
+        # This keeps the same ordering of the operators - applications order will be reversed(!)
         for i, op in enumerate(self._operators):
             reprjsondict["operators"][i] = op._repr_json_()
 
@@ -845,3 +850,30 @@ class CompositeOperator(Operator):
         reprstr.append("</ol>")
 
         return " ".join(reprstr)
+
+
+def Step(TR, T1, T2, alpha, phi, linear_phase_inc, observe=False):
+    """
+    Function the creates an CompositeOperator that
+
+    Parameters
+    ----------
+    TR: TR in ms
+    T1: T1 in ms
+    T2: T2 in ms
+    alpha: flip angle in rad
+    phi: initial rf phase in rad
+    linear_phase_inc: linear phase increment for RF spoiling
+    observe: boolean - if yes than an observer will be added and returned
+
+    Returns
+    -------
+    c: composite oeprator performing the desired operation
+
+    -- or --
+
+    (c, o) if observe is true with o being the observer
+
+    """
+
+    raise NotImplementedError("Nothing here yet...!")
