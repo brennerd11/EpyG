@@ -278,6 +278,7 @@ class Shift(Operator):
         new_max = epg.max_state + self.shifts
 
         # Deal with shifting exceeding the EPG size
+        # TODO this must be refactored
         if new_max >= epg.size():
             if self._autogrow:
                 if self._compacting: # Try to compact first and see if this resolves the issue
@@ -295,15 +296,22 @@ class Shift(Operator):
         for i in range(np.abs(self.shifts)):
             if self.shifts > 0:  # Here we handle positive shifts !!! NEED TO DOUBLE CHECK THIS !!!
                 # epg.state[0, 1:] = epg.state[0, 0:-1]
-                epg.state[0, 1:new_max+1] = epg.state[0, 0:new_max]
+                #epg.state[0, 1:new_max+1] = epg.state[0, 0:new_max]
 
                 # Shift this one up (dephased transverse crosses zero)
                 # epg.state[1,0:epg.max_state] = epg.state[1, 1:epg.max_state-1] # Shift this one left
-                epg.state[1, 0:new_max] = epg.state[1, 1:new_max+1]  # Shift this one left
+                #epg.state[1, 0:] = epg.state[1, 1:]  # Shift this one left
+                #epg.state[0, 0] = np.conj(epg.state[1, 0])
+                epg.state[0, 1:] = epg.state[0, 0:-1]
+                epg.state[1, 0:-1] = epg.state[1, 1:]
                 epg.state[0, 0] = np.conj(epg.state[1, 0])
             elif self.shifts < 0:  # TODO CHECK THIS PART!
-                epg.state[1, 1:new_max+1] = epg.state[1, 0:new_max]
-                epg.state[0, 0:new_max] = epg.state[0, 1:new_max+1]
+                # epg.state[1, 1:new_max+1] = epg.state[1, 0:new_max]
+                # epg.state[0, 0:new_max] = epg.state[0, 1:new_max+1]
+                # epg.state[1, 0] = np.conj(epg.state[0, 0])
+
+                epg.state[1, 1:] = epg.state[1, 0:-1]
+                epg.state[0, 0:-1] = epg.state[0, 1:]
                 epg.state[1, 0] = np.conj(epg.state[0, 0])
             else:  # Else is 0 shift - do nothing
                 pass
