@@ -73,7 +73,8 @@ def sim_mprage(T1, T2, TR, TI, echo_spacing, echo_train_length, alpha_deg, phase
     phase_inc_deg
     pre_loops
     inversion_angle_deg
-    k_space_center
+    k_space_center: Fractional position of k-space center corresponding to TI. 0.0 = beginning (center out),
+                    1.0: end
 
     Returns
     -------

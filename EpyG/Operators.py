@@ -32,6 +32,10 @@ class Operator(object):
         self.count += 1  # Count applications of the operator
         return epg
 
+    def reset(self):
+        self.count = 0
+        return self
+
     def __mul__(self, other):
         # Overload multiplication just calling the apply method - intentionally rmul is not defined!
         # TODO This has to move to the apply method to have it called always
@@ -236,7 +240,7 @@ class Epsilon(Operator):
         self._E2 = exp(-TR_over_T2)
         self._meq = meq
 
-    def apply(self, epg):
+    def apply(self, epg):  # Somehow composite statements (*=, +=) did not work...
         epg.state[0, :] = epg.state[0, :] * self._E2  # Transverse decay
         epg.state[1, :] = epg.state[1, :] * self._E2  # Transverse decay
         epg.state[2, :] = epg.state[2, :] * self._E1  # Longitudinal decay
@@ -356,9 +360,9 @@ class Diffusion(Operator):
         ed1 = exp(-db1)
         ed2 = exp(-db2)
 
-        epg.state[0, :] *= ed2  # Transverse damping
-        epg.state[1, :] *= ed2  # Transverse damping
-        epg.state[2, :] *= ed1  # Longitudinal damping
+        epg.state[0, :] = epg.state[0, :] * ed2  # Transverse damping
+        epg.state[1, :] = epg.state[1, :] * ed2  # Transverse damping
+        epg.state[2, :] = epg.state[2, :] * ed1  # Longitudinal damping
 
         return super(Diffusion, self).apply(epg)
 
@@ -513,12 +517,6 @@ class Observer(Operator):
 
         return reprjsondict
 
-        # class SteadyStateObserver(Observer):
-        #
-        #    def __init__(self, F_states=(0,), Z_states=(), rx_phase=0.0, *args, **kwargs):
-        #  super(SteadyStateObserver, self).__init__(F_states=F_states, Z_states=Z_states, rx_phase=rx_phase,
-        #                                         *args, **kwargs)
-
 
 class SteadyStateObserver(Observer):
     """
@@ -551,9 +549,11 @@ class SteadyStateObserver(Observer):
         for f_state in self._fstates:
             if not self._check_steady_state(self._data_dict_f[f_state]):
                 return False
+
         for z_state in self._zstates:
             if not self._check_steady_state(self._data_dict_f[z_state]):
                 return False
+
         return True
 
     def apply(self, epg):
@@ -566,6 +566,21 @@ class SteadyStateObserver(Observer):
 
     def get_z(self, order):
         return super(SteadyStateObserver, self).get_z(order)[-1]
+
+
+class FullEPGObserver(Operator):
+
+    def __init__(self, state_size=256, transient_size=256, *args, **kwargs):
+        super(FullEPGObserver, self).__init__(*args, **kwargs)
+        self._state_size = state_size
+        self._transient_szie = transient_size
+
+        self._f_matrix = np.zeros((2*state_size, transient_size))
+        self._z_matrix = np.zeros((state_size, transient_size))
+
+    def apply(self, epg):
+        raise NotImplementedError("Not yet...")
+
 
 
 class CompositeOperator(Operator):
