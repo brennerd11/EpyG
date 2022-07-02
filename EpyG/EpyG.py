@@ -8,7 +8,7 @@ Derived from Ed Prachts python implementation
 @author: Daniel Brenner
 """
 
-from __future__ import annotations, division, print_function, annotations
+from __future__ import annotations, division, print_function
 
 import json
 import sys
@@ -18,7 +18,6 @@ from typing import Dict, Optional
 import numpy as np
 from numpy import abs as abs
 from numpy import exp as exp
-import numpy
 
 # data type sued for epg operations - default is double complex (complex128)
 DTYPE = "complex128"
@@ -64,16 +63,16 @@ class epg(object):
         )
 
     @staticmethod
-    def copy(other_epg: EpyG) -> EpyG:
+    def copy(other_epg: epg) -> epg:
         """
         Copies an existing epg
         """
-        new_epg = EpyG(initial_size=other_epg.size, m0=1.0)
+        new_epg = epg(initial_size=other_epg.size, m0=1.0)
         new_epg.max_state = other_epg.max_state
         new_epg.state = other_epg.state.copy()
         return new_epg
 
-    def resize(self, new_size: int) -> EpyG:
+    def resize(self, new_size: int) -> epg:
         """
         Resizes the internal storage for the epg. Will also shrink the EPG without warning(!)
 
@@ -90,7 +89,7 @@ class epg(object):
 
         return self
 
-    def extend(self, increment: Optional[int] = None) -> EpyG:
+    def extend(self, increment: Optional[int] = None) -> epg:
         """
         Extends the internal state vector to a suitable (guessed) size
         """
@@ -112,7 +111,7 @@ class epg(object):
         """
         return self.state.shape[1]
 
-    def compact(self, threshold=1e-12, compact_memory=False) -> EpyG:
+    def compact(self, threshold=1e-12, compact_memory=False) -> epg:
         """
         Compacts the EPG -> i.e. zeroes all states below the given threshold and reduces the max_state attribute.
         Will only reduce memory when argument compact_memory is set
@@ -143,16 +142,16 @@ class epg(object):
 
         return self
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.size()
 
-    def get_state_matrix(self):
+    def get_state_matrix(self) -> np.ndarray:
         """
         Returns the reduced state representation as a 3xN matrix (F+,F-,Z)
         """
         return self.state[:, 0 : self.max_state + 1]
 
-    def get_order_vector(self):
+    def get_order_vector(self) -> np.ndarray:
         """
         Returns a vector of integers containing the dephasing order
         """
