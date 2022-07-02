@@ -7,21 +7,24 @@ Derived from Ed Prachts python implementation
 
 @author: Daniel Brenner
 """
-from __future__ import division, print_function
+
+from __future__ import annotations, division, print_function, annotations
 
 import json
 import sys
 from collections import OrderedDict
+from typing import Dict, Optional
 
 import numpy as np
 from numpy import abs as abs
 from numpy import exp as exp
+import numpy
 
 # data type sued for epg operations - default is double complex (complex128)
 DTYPE = "complex128"
 
 
-class EpyG(object):
+class epg(object):
     """
     Extendded Phase Graph (EPG) object for MR multipulse simulations.
     Transparently wraps a 3xN matrix containing the full set of Fourier coefficients representing a manifold dephased magnetisation state.
@@ -38,7 +41,7 @@ class EpyG(object):
     # NOTE: It would be much(!) more efficient for certain applications to have a sparse state matrix and/or to abstract
     #       access to the individual states to isolate this from the actual data structure at hand. This would probably
     #       conflict with the way operators are currently used!
-    def __init__(self, initial_size=256, m0=1.0):
+    def __init__(self, initial_size: int = 256, m0: float = 1.0):
         """
         Constructs EpyG object
 
@@ -48,14 +51,20 @@ class EpyG(object):
         :type m0: scalar, double or None
 
         """
-        # State vector: index 0,1 transverse dephased states; index 2 longitudinal dephased states 
-        self.state = np.zeros((3, initial_size), dtype=DTYPE)  # Should encapsulate the state and make it a property
-        self.state[2, 0] = m0  # Use meq as equilibrium magnetisation; otherwise use the specified m0
+        # State vector: index 0,1 transverse dephased states; index 2 longitudinal dephased states
+        self.state = np.zeros(
+            (3, initial_size), dtype=DTYPE
+        )  # Should encapsulate the state and make it a property
+        self.state[
+            2, 0
+        ] = m0  # Use meq as equilibrium magnetisation; otherwise use the specified m0
         self.max_state = 0  # Maximum order of occupied states
-        self.print_digits = 3  # Used in ipython notebooks to control precision/threshold for vis
+        self.print_digits = (
+            3  # Used in ipython notebooks to control precision/threshold for vis
+        )
 
     @staticmethod
-    def copy(other_epg):
+    def copy(other_epg: EpyG) -> EpyG:
         """
         Copies an existing epg
         """
@@ -64,7 +73,7 @@ class EpyG(object):
         new_epg.state = other_epg.state.copy()
         return new_epg
 
-    def resize(self, new_size):
+    def resize(self, new_size: int) -> EpyG:
         """
         Resizes the internal storage for the epg. Will also shrink the EPG without warning(!)
 
@@ -76,12 +85,12 @@ class EpyG(object):
         else:
             # Manual resizing - the resize method of ndarray did not work as expected
             new_array = np.zeros((3, new_size), dtype=self.state.dtype)
-            new_array[:, :self.max_state + 1] = self.state[:, :self.max_state + 1]
+            new_array[:, : self.max_state + 1] = self.state[:, : self.max_state + 1]
             self.state = new_array
 
         return self
 
-    def extend(self, increment=None):
+    def extend(self, increment: Optional[int] = None) -> EpyG:
         """
         Extends the internal state vector to a suitable (guessed) size
         """
@@ -92,7 +101,7 @@ class EpyG(object):
 
         return self.resize(new_size)
 
-    def size(self):
+    def size(self) -> int:
         """
         Size of the EPG
 
@@ -103,7 +112,7 @@ class EpyG(object):
         """
         return self.state.shape[1]
 
-    def compact(self, threshold=1e-12, compact_memory=False):
+    def compact(self, threshold=1e-12, compact_memory=False) -> EpyG:
         """
         Compacts the EPG -> i.e. zeroes all states below the given threshold and reduces the max_state attribute.
         Will only reduce memory when argument compact_memory is set
@@ -122,8 +131,7 @@ class EpyG(object):
         self.state[:, mask] = 0.0
         try:
             self.max_state = np.max(np.argwhere(np.logical_not(mask)))
-            #print("Newstate = " + str(self.max_state))
-        except ValueError: # In case of a 0 mask
+        except ValueError:  # In case of a 0 mask
             self.max_state = 0
 
         # Make sure to remove all zero states
@@ -142,7 +150,7 @@ class EpyG(object):
         """
         Returns the reduced state representation as a 3xN matrix (F+,F-,Z)
         """
-        return self.state[:, 0:self.max_state + 1]
+        return self.state[:, 0 : self.max_state + 1]
 
     def get_order_vector(self):
         """
@@ -150,7 +158,7 @@ class EpyG(object):
         """
         return np.arange(self.max_state + 1)
 
-    def get_z(self, order=0):
+    def get_z(self, order=0) -> np.dtype:
         """
         Get the longitudinal magnetisation component k
         """
@@ -159,7 +167,7 @@ class EpyG(object):
         except IndexError:  # Everything that is not populated is 0!
             return np.array(0.0, dtype=self.state.dtype)
 
-    def get_f(self, order=0, rx_phase=0.0):
+    def get_f(self, order=0, rx_phase=0.0) -> np.dtype:
         """
         Get the transverse magnetisation component k while being detected with
         a given receiver phase. Useful for RF spoiling
@@ -173,13 +181,13 @@ class EpyG(object):
         except IndexError:  # Everything that is not populated is 0!
             return np.array(0.0, dtype=DTYPE)
 
-    def is_occupied(self, k, thresh=1e-6):
+    def is_occupied(self, k: int, thresh: float = 1e-6) -> bool:
         if np.any(np.abs(self.state[:, k]) > thresh):
             return True
         else:
             return False
 
-    def state_iterator(self, thresh=1e-6):
+    def state_iterator(self, thresh: float = 1e-6):
         """
         Iterates over all non-empty states returning the tuple (k, [F+, F-, Z])
         """
@@ -194,14 +202,19 @@ class EpyG(object):
         if axis is None:
             _, axis = plt.subplots()
 
-        transverse = np.hstack((self.state[1, self.max_state + 1:1:-1], self.state[0, 0:self.max_state + 1]))
+        transverse = np.hstack(
+            (
+                self.state[1, self.max_state + 1 : 1 : -1],
+                self.state[0, 0 : self.max_state + 1],
+            )
+        )
         index = np.arange(-self.max_state, self.max_state + 1)
 
         print(index.shape)
         print(transverse.shape)
         axis.plot(index, np.abs(transverse), "o")
 
-    def _repr_html_(self):
+    def _repr_html_(self) -> str:
         """
         Tabular representation of the EPG
         Very limited. Maybe color coding the cells would be nice
@@ -247,30 +260,35 @@ class EpyG(object):
         html.append("</tr>")
         html.append("</table>")
 
-        return ''.join(html)
+        return "".join(html)
 
-    def _repr_json_(self):
+    def _repr_json_(self) -> Dict:
         jsonrepr = OrderedDict()
-        jsonrepr['type'] = self.__class__.__name__
-        jsonrepr['size'] = self.size()
-        jsonrepr['k'] = range(self.max_state)
-        jsonrepr['F+'] = OrderedDict()
-        jsonrepr['F-'] = OrderedDict()
-        jsonrepr['Z'] = OrderedDict()
+        jsonrepr["type"] = self.__class__.__name__
+        jsonrepr["size"] = self.size()
+        jsonrepr["k"] = range(self.max_state)
+        jsonrepr["F+"] = OrderedDict()
+        jsonrepr["F-"] = OrderedDict()
+        jsonrepr["Z"] = OrderedDict()
 
-        jsonrepr['F+']['real'] = self.state[0, :self.max_state].real.tolist()
-        jsonrepr['F-']['real'] = self.state[1, :self.max_state].real.tolist()
-        jsonrepr['Z']['real'] = self.state[2, :self.max_state].real.tolist()
+        jsonrepr["F+"]["real"] = self.state[0, : self.max_state].real.tolist()
+        jsonrepr["F-"]["real"] = self.state[1, : self.max_state].real.tolist()
+        jsonrepr["Z"]["real"] = self.state[2, : self.max_state].real.tolist()
 
-        jsonrepr['F+']['imag'] = self.state[0, :self.max_state].imag.tolist()
-        jsonrepr['F-']['imag'] = self.state[1, :self.max_state].imag.tolist()
-        jsonrepr['Z']['imag'] = self.state[2, :self.max_state].imag.tolist()
+        jsonrepr["F+"]["imag"] = self.state[0, : self.max_state].imag.tolist()
+        jsonrepr["F-"]["imag"] = self.state[1, : self.max_state].imag.tolist()
+        jsonrepr["Z"]["imag"] = self.state[2, : self.max_state].imag.tolist()
 
         return jsonrepr
 
     def store_to_file(self, filename, **kwargs):
         with open(filename, "w") as fp:
-            json.dump(self._repr_json_(), fp, skipkeys=False, ensure_ascii=True, indent=4, encoding="utf-8",  **kwargs)
-
-
-
+            json.dump(
+                self._repr_json_(),
+                fp,
+                skipkeys=False,
+                ensure_ascii=True,
+                indent=4,
+                encoding="utf-8",
+                **kwargs,
+            )

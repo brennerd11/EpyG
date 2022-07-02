@@ -1,2 +1,7 @@
 *.ipynb_checkpoints*
 *.pyc
+__pycache__
+.hypothesis
+.vscode
+.pytest_cache
+.DS_Store

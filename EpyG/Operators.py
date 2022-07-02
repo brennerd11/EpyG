@@ -5,9 +5,7 @@ import uuid
 from collections import OrderedDict, deque
 
 import numpy as np
-from numpy import cos
-from numpy import exp
-from numpy import sin
+from numpy import cos, exp, sin
 
 
 class Operator(object):
@@ -26,7 +24,9 @@ class Operator(object):
         if name:
             self.name = name  # Optional name for operators
         else:
-            self.name = str(uuid.uuid4())  # Unique names for easier possibility of serialisation
+            self.name = str(
+                uuid.uuid4()
+            )  # Unique names for easier possibility of serialisation
 
     def apply(self, epg):
         self.count += 1  # Count applications of the operator
@@ -79,10 +79,17 @@ class Operator(object):
 
         return " ".join(reprstr)
 
-
     def store_to_file(self, filename, **kwargs):
         with open(filename, "w") as fp:
-            json.dump(self._repr_json_(), fp, skipkeys=False, ensure_ascii=True, indent=4, encoding="utf-8", **kwargs)
+            json.dump(
+                self._repr_json_(),
+                fp,
+                skipkeys=False,
+                ensure_ascii=True,
+                indent=4,
+                encoding="utf-8",
+                **kwargs
+            )
 
 
 class Identity(Operator):
@@ -94,6 +101,7 @@ class Transform(Operator):
     Operator implementing the transformation performed by application of an RF pulse
     Assumes all inputs in radians!
     """
+
     DTYPE = "complex128"
     # It would be nice to have all operators "immutable" but that would make usage difficult.
     # E.g. for RF spoiling
@@ -163,8 +171,10 @@ class Transform(Operator):
     def apply(self, epg):
         if self._changed:
             self.calc_matrix()
-        #epg.state = np.dot(self._R, epg.state)
-        epg.state[:, 0:epg.max_state+1] = np.dot(self._R, epg.state[:, 0:epg.max_state+1])
+        # epg.state = np.dot(self._R, epg.state)
+        epg.state[:, 0 : epg.max_state + 1] = np.dot(
+            self._R, epg.state[:, 0 : epg.max_state + 1]
+        )
         return super(Transform, self).apply(epg)  # Invoke superclass method
 
     def _repr_json_(self):
@@ -203,7 +213,9 @@ class PhaseIncrementedTransform(Transform):
     def linear_phase_increment(self, value):
         self._linear_phase_increment = value
 
-    def __init__(self, alpha, phi, linear_phase_inc=0.0, const_phase_inc=0.0, *args, **kwargs):
+    def __init__(
+        self, alpha, phi, linear_phase_inc=0.0, const_phase_inc=0.0, *args, **kwargs
+    ):
         super(PhaseIncrementedTransform, self).__init__(alpha, phi, *args, **kwargs)
         self._constant_phase_increment = const_phase_inc
         self._linear_phase_increment = linear_phase_inc
@@ -211,7 +223,9 @@ class PhaseIncrementedTransform(Transform):
     def update(self):
         self.phi += self.count * self._linear_phase_increment
         self.phi += self.constant_phase_increment
-        self.phi = np.mod(self.phi, 2.0 * np.pi)  # Restrict the phase to avoid accumulation of numerical errors
+        self.phi = np.mod(
+            self.phi, 2.0 * np.pi
+        )  # Restrict the phase to avoid accumulation of numerical errors
         self._changed = True
 
     def apply(self, epg):
@@ -244,7 +258,9 @@ class Epsilon(Operator):
         epg.state[0, :] = epg.state[0, :] * self._E2  # Transverse decay
         epg.state[1, :] = epg.state[1, :] * self._E2  # Transverse decay
         epg.state[2, :] = epg.state[2, :] * self._E1  # Longitudinal decay
-        epg.state[2, 0] = epg.state[2, 0] + self._meq * (1.0 - self._E1)  # Regrowth of Mz
+        epg.state[2, 0] = epg.state[2, 0] + self._meq * (
+            1.0 - self._E1
+        )  # Regrowth of Mz
 
         return super(Epsilon, self).apply(epg)
 
@@ -285,27 +301,31 @@ class Shift(Operator):
         # TODO this must be refactored
         if new_max >= epg.size():
             if self._autogrow:
-                if self._compacting: # Try to compact first and see if this resolves the issue
+                if (
+                    self._compacting
+                ):  # Try to compact first and see if this resolves the issue
                     epg.compact(threshold=self._compacting)
-                if (epg.max_state + self.shifts) >= epg.size(): # No? then still extend
+                if (epg.max_state + self.shifts) >= epg.size():  # No? then still extend
                     epg.extend()
                 new_max = epg.max_state + self.shifts
             else:
                 raise IndexError(
-                    "Shift is not possible as EPG size is too limited and operator does not allow autogrowing!")
-
+                    "Shift is not possible as EPG size is too limited and operator does not allow autogrowing!"
+                )
 
         # TODO Make multiple shifts happen without the for loop
         # REMARK Only shift the necessary parts of the EPG here -- does not seem to be impact speed significantly
         for i in range(np.abs(self.shifts)):
-            if self.shifts > 0:  # Here we handle positive shifts !!! NEED TO DOUBLE CHECK THIS !!!
+            if (
+                self.shifts > 0
+            ):  # Here we handle positive shifts !!! NEED TO DOUBLE CHECK THIS !!!
                 # epg.state[0, 1:] = epg.state[0, 0:-1]
-                #epg.state[0, 1:new_max+1] = epg.state[0, 0:new_max]
+                # epg.state[0, 1:new_max+1] = epg.state[0, 0:new_max]
 
                 # Shift this one up (dephased transverse crosses zero)
                 # epg.state[1,0:epg.max_state] = epg.state[1, 1:epg.max_state-1] # Shift this one left
-                #epg.state[1, 0:] = epg.state[1, 1:]  # Shift this one left
-                #epg.state[0, 0] = np.conj(epg.state[1, 0])
+                # epg.state[1, 0:] = epg.state[1, 1:]  # Shift this one left
+                # epg.state[0, 0] = np.conj(epg.state[1, 0])
                 epg.state[0, 1:] = epg.state[0, 0:-1]
                 epg.state[1, 0:-1] = epg.state[1, 1:]
                 epg.state[0, 0] = np.conj(epg.state[1, 0])
@@ -453,7 +473,9 @@ class Observer(Operator):
     def apply(self, epg):
 
         for f_state in self._data_dict_f.keys():
-            self._data_dict_f[f_state].append(epg.get_f(order=f_state, rx_phase=self.rx_phase))
+            self._data_dict_f[f_state].append(
+                epg.get_f(order=f_state, rx_phase=self.rx_phase)
+            )
 
         for z_state in self._data_dict_z.keys():
             self._data_dict_z[z_state].append(epg.get_z(order=z_state))
@@ -508,12 +530,16 @@ class Observer(Operator):
         reprjsondict["Z"] = OrderedDict()
 
         for state in self._data_dict_f.keys():
-            reprjsondict["F"][state] = {"real": self.get_f(state).real.tolist(),
-                                        "imag": self.get_f(state).imag.tolist()}
+            reprjsondict["F"][state] = {
+                "real": self.get_f(state).real.tolist(),
+                "imag": self.get_f(state).imag.tolist(),
+            }
 
         for state in self._data_dict_z.keys():
-            reprjsondict["Z"][state] = {"real": self.get_z(state).real.tolist(),
-                                        "imag": self.get_z(state).imag.tolist()}
+            reprjsondict["Z"][state] = {
+                "real": self.get_z(state).real.tolist(),
+                "imag": self.get_z(state).imag.tolist(),
+            }
 
         return reprjsondict
 
@@ -524,9 +550,21 @@ class SteadyStateObserver(Observer):
     It further will compute the wether a steady state has been reached which can e.g. by used to terminate a simulation early
 
     """
+
     # TODO The steady state observer is not yet tested...
-    def __init__(self, f_states=(0,), z_states=(), rx_phase=0.0, window_size=5, thresh=1e-3, *args, **kwargs):
-        super(SteadyStateObserver, self).__init__(f_states, z_states, rx_phase, *args, **kwargs)
+    def __init__(
+        self,
+        f_states=(0,),
+        z_states=(),
+        rx_phase=0.0,
+        window_size=5,
+        thresh=1e-3,
+        *args,
+        **kwargs
+    ):
+        super(SteadyStateObserver, self).__init__(
+            f_states, z_states, rx_phase, *args, **kwargs
+        )
         self._windows_size = window_size
         self.steady = False
         self._threshold = thresh
@@ -557,7 +595,7 @@ class SteadyStateObserver(Observer):
         return True
 
     def apply(self, epg):
-        ret =  super(SteadyStateObserver, self).apply()
+        ret = super(SteadyStateObserver, self).apply()
         self.steady = self._check_states()
         return ret
 
@@ -569,18 +607,16 @@ class SteadyStateObserver(Observer):
 
 
 class FullEPGObserver(Operator):
-
     def __init__(self, state_size=256, transient_size=256, *args, **kwargs):
         super(FullEPGObserver, self).__init__(*args, **kwargs)
         self._state_size = state_size
         self._transient_szie = transient_size
 
-        self._f_matrix = np.zeros((2*state_size, transient_size))
+        self._f_matrix = np.zeros((2 * state_size, transient_size))
         self._z_matrix = np.zeros((state_size, transient_size))
 
     def apply(self, epg):
         raise NotImplementedError("Not yet...")
-
 
 
 class CompositeOperator(Operator):
@@ -601,7 +637,6 @@ class CompositeOperator(Operator):
             if op.name == name:
                 return op
         return None
-
 
     def prepend(self, operator):
         self._operators.insert(0, operator)
@@ -671,9 +706,9 @@ class CompositeOperator(Operator):
 
         return " ".join(reprstr)
 
+
 # TODO critically consider if we need this (untested) operator
 class LoopOperator(CompositeOperator):
-
     def __init__(self, looplength=1, *args, **kwargs):
         super(LoopOperator, self).__init__(*args, **kwargs)
         self._looplength = looplength
@@ -691,6 +726,3 @@ class LoopOperator(CompositeOperator):
         reprjsondict = super(CompositeOperator, self)._repr_json_()
         reprjsondict["_looplength"] = self._looplength
         return reprjsondict
-
-
-
