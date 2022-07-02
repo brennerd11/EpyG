@@ -20,37 +20,45 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    
     - name: Cache Poetry cache
       uses: actions/cache@v2
       with:
         path: ~/.cache/pypoetry
         key: poetry-cache-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ env.POETRY_VERSION }}
       # virtualenv cache should depends on OS, Python version and `poetry.lock` (and optionally workflow files).
+    
     - name: Cache Packages
       uses: actions/cache@v2
       with:
         path: ~/.local
         key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}-${{ hashFiles('.github/workflows/*.yml') }}
+    
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
+    
     - name: Run image
       uses: abatilo/actions-poetry@v2.0.0
       with:
         poetry-version: 1.1.13
+    
     - name: Install dependencies
       run: |
         poetry install
+    
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
         poetry run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         poetry run flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    
     - name: Test with pytest
       run: |
         poetry run pytest
+    
     - name: Build with poetry
-        poetry build
-        
+      run: |
+        poetry build    
