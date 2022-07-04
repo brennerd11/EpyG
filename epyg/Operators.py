@@ -133,7 +133,7 @@ class Transform(Operator):
         self._phi = value
         self._changed = True  # Recalculate transformation matrix automatically
 
-    def __init__(self, alpha, phi, *args, **kwargs):
+    def __init__(self, alpha: float, phi: float, *args, **kwargs):
         super(Transform, self).__init__(*args, **kwargs)
         self._R = np.zeros((3, 3), dtype=Transform.DTYPE)
         self._alpha = alpha
@@ -247,8 +247,8 @@ class Epsilon(Operator):
     def __init__(self, TR_over_T1, TR_over_T2, meq=1.0, *args, **kwargs):
         super(Epsilon, self).__init__(*args, **kwargs)
 
-        assert TR_over_T1 > 0.0, "Tachyons?"
-        assert TR_over_T2 > 0.0, "Tachyons?"
+        assert TR_over_T1 >= 0.0, "Tachyons?"
+        assert TR_over_T2 >= 0.0, "Tachyons?"
 
         self._E1 = exp(-TR_over_T1)
         self._E2 = exp(-TR_over_T2)
@@ -275,7 +275,7 @@ class Epsilon(Operator):
 class Shift(Operator):
     """
     Implements the shift operator the corresponds to a 2PI dephasing of the magnetisation.
-    More dephasings can be achieved by multiple applications of this operator! Currently only handles "positive" shifts
+    More dephasings can be achieved by multiple applications of this operator!
 
     !!! DANGER DANGER DANGER DANGER DANGER !!!
 
