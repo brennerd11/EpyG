@@ -4,8 +4,8 @@ version = "0.1.0"
 description = "Python implementation of the Extended Phase Graph algorithm for simulation of MRI signals"
 authors = ["Daniel Brenner"]
 
-packages = [
-    { include = "epyg" } ]
+#packages = [
+#    { include = "epyg" } ]
 
 [tool.poetry.dependencies]
 python = ">=3.8,<4.0"
