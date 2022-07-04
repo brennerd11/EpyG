@@ -291,3 +291,13 @@ class epg(object):
                 encoding="utf-8",
                 **kwargs,
             )
+
+    def __eq__(self, other_epg: epg):
+        if not isinstance(other_epg, epg):
+            return False
+        if not self.max_state == other_epg.max_state:
+            return False
+        if not np.array_equal(self.state, other_epg.state):
+            return False
+        else:
+            return True
