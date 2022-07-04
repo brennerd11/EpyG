@@ -40,6 +40,8 @@ def test_trivial_flip(alpha, phi):
 
 
 @given(shifts=hypothesis.strategies.integers(min_value=-128, max_value=-128))
+@example(shifts=1)
+@example(shifts=-1)
 def test_shift_and_shift_back_relaxed_state(shifts):
     state = EpyG.epg(initial_size=256)
     S_forward = Operators.Shift(shifts=shifts)
@@ -48,6 +50,7 @@ def test_shift_and_shift_back_relaxed_state(shifts):
 
 
 @given(shifts=hypothesis.strategies.integers(min_value=0, max_value=64))
+@example(shifts=1)
 def test_shift_and_shift_back_excited_state(shifts):
     state = EpyG.epg(initial_size=256)
     T = Operators.Transform(alpha=np.deg2rad(45.0), phi=np.deg2rad(45.0))
@@ -58,6 +61,7 @@ def test_shift_and_shift_back_excited_state(shifts):
 
 
 @given(relax_factor=hypothesis.strategies.floats(min_value=0.0))
+@example(relax_factor=1.0)
 def test_relaxed_state_can_not_relax_further(relax_factor):
     state = EpyG.epg(initial_size=256)
     E = Operators.Epsilon(TR_over_T1=relax_factor, TR_over_T2=relax_factor)
