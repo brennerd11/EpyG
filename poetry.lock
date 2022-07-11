@@ -140,7 +140,7 @@ python-versions = "*"
 
 [[package]]
 name = "numpy"
-version = "1.23.0"
+version = "1.23.1"
 description = "NumPy is the fundamental package for array computing with Python."
 category = "main"
 optional = false
@@ -272,7 +272,7 @@ python-versions = ">=3.7"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<4.0"
-content-hash = "3fcd5553348557e3e87332cf22cbc710e022d698f2d4fc8f27c3264adafe26ec"
+content-hash = "7220a084937fa9ab899ea146f93456d8cc25ce48a92f5f5136ea5e473c8a0846"
 
 [metadata.files]
 atomicwrites = []
