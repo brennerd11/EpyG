@@ -105,7 +105,8 @@ class Transform(Operator):
     DTYPE = "complex128"
     # It would be nice to have all operators "immutable" but that would make usage difficult.
     # E.g. for RF spoiling
-    # The operator implements properties which will cause correct recalculation of the matrix when changing the attributes
+    # The operator implements properties which will cause correct recalculation of
+    # the matrix when changing the attributes
 
     @property
     def alpha(self):
@@ -133,7 +134,7 @@ class Transform(Operator):
         self._phi = value
         self._changed = True  # Recalculate transformation matrix automatically
 
-    def __init__(self, alpha, phi, *args, **kwargs):
+    def __init__(self, alpha: float, phi: float, *args, **kwargs):
         super(Transform, self).__init__(*args, **kwargs)
         self._R = np.zeros((3, 3), dtype=Transform.DTYPE)
         self._alpha = alpha
@@ -172,8 +173,8 @@ class Transform(Operator):
         if self._changed:
             self.calc_matrix()
         # epg.state = np.dot(self._R, epg.state)
-        epg.state[:, 0 : epg.max_state + 1] = np.dot(
-            self._R, epg.state[:, 0 : epg.max_state + 1]
+        epg.state[:, 0 : epg.max_state + 1] = np.dot(  # noqa: E203
+            self._R, epg.state[:, 0 : epg.max_state + 1]  # noqa: E203
         )
         return super(Transform, self).apply(epg)  # Invoke superclass method
 
@@ -247,8 +248,8 @@ class Epsilon(Operator):
     def __init__(self, TR_over_T1, TR_over_T2, meq=1.0, *args, **kwargs):
         super(Epsilon, self).__init__(*args, **kwargs)
 
-        assert TR_over_T1 > 0.0, "Tachyons?"
-        assert TR_over_T2 > 0.0, "Tachyons?"
+        assert TR_over_T1 >= 0.0, "Tachyons?"
+        assert TR_over_T2 >= 0.0, "Tachyons?"
 
         self._E1 = exp(-TR_over_T1)
         self._E2 = exp(-TR_over_T2)
@@ -275,7 +276,7 @@ class Epsilon(Operator):
 class Shift(Operator):
     """
     Implements the shift operator the corresponds to a 2PI dephasing of the magnetisation.
-    More dephasings can be achieved by multiple applications of this operator! Currently only handles "positive" shifts
+    More dephasings can be achieved by multiple applications of this operator!
 
     !!! DANGER DANGER DANGER DANGER DANGER !!!
 
@@ -360,7 +361,8 @@ class Diffusion(Operator):
 
     def __init__(self, d, *args, **kwargs):
         """
-        :param d: dimension less diffusion damping constant - corresponding to b*D were D is diffusivity and b is "the b-value"
+        :param d: dimension less diffusion damping constant - corresponding to
+                  b*D were D is diffusivity and b is "the b-value"
         :type d: scalar, floating point
         """
         super(Diffusion, self).__init__(*args, **kwargs)
@@ -372,10 +374,10 @@ class Diffusion(Operator):
         Uses nomenclature from Nehrke et al.
         """
 
-        l = epg.get_order_vector()
-        lsq = l * l
-        db1 = self._d * lsq
-        db2 = self._d * (lsq + l + 1.0 / 3.0)
+        order = epg.get_order_vector()
+        order_sq = order * order
+        db1 = self._d * order_sq
+        db2 = self._d * (order_sq + order + 1.0 / 3.0)
 
         ed1 = exp(-db1)
         ed2 = exp(-db2)
@@ -547,7 +549,8 @@ class Observer(Operator):
 class SteadyStateObserver(Observer):
     """
     The steady state observer will record only a specified number of last signal events.
-    It further will compute the wether a steady state has been reached which can e.g. by used to terminate a simulation early
+    It further will compute the wether a steady state has been reached which can
+    e.g. by used to terminate a simulation early
 
     """
 

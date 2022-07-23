@@ -26,8 +26,10 @@ DTYPE = "complex128"
 class epg(object):
     """
     Extendded Phase Graph (EPG) object for MR multipulse simulations.
-    Transparently wraps a 3xN matrix containing the full set of Fourier coefficients representing a manifold dephased magnetisation state.
-    The EPG itself has no paremeters! All parameters (T1,T2,etc.) are implemented within the Operators acting on the EPG object
+    Transparently wraps a 3xN matrix containing the full set of Fourier coefficients representing a
+    manifold dephased magnetisation state.
+    The EPG itself has no paremeters!
+    All parameters (T1,T2,etc.) are implemented within the Operators acting on the EPG object
 
 
     References
@@ -67,7 +69,7 @@ class epg(object):
         """
         Copies an existing epg
         """
-        new_epg = epg(initial_size=other_epg.size, m0=1.0)
+        new_epg = epg(initial_size=other_epg.size(), m0=1.0)
         new_epg.max_state = other_epg.max_state
         new_epg.state = other_epg.state.copy()
         return new_epg
@@ -149,7 +151,7 @@ class epg(object):
         """
         Returns the reduced state representation as a 3xN matrix (F+,F-,Z)
         """
-        return self.state[:, 0 : self.max_state + 1]
+        return self.state[:, 0 : self.max_state + 1]  # noqa: E203
 
     def get_order_vector(self) -> np.ndarray:
         """
@@ -203,8 +205,8 @@ class epg(object):
 
         transverse = np.hstack(
             (
-                self.state[1, self.max_state + 1 : 1 : -1],
-                self.state[0, 0 : self.max_state + 1],
+                self.state[1, self.max_state + 1 : 1 : -1],  # noqa: E203
+                self.state[0, 0 : self.max_state + 1],  # noqa: E203
             )
         )
         index = np.arange(-self.max_state, self.max_state + 1)
@@ -291,3 +293,10 @@ class epg(object):
                 encoding="utf-8",
                 **kwargs,
             )
+
+    def __eq__(self, other_epg: epg):
+        if not isinstance(other_epg, epg):
+            return False
+        if not self.max_state == other_epg.max_state:
+            return False
+        return np.array_equal(self.state, other_epg.state, equal_nan=True)
