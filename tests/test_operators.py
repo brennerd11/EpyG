@@ -25,6 +25,8 @@ def test_neutral_flip_and_backflip(alpha, phi):
     state = EpyG.epg()
     T_forward = Operators.Transform(alpha=alpha, phi=phi)
     T_backward = Operators.Transform(alpha=alpha, phi=-1.0 * phi)
+    state2: EpyG.epg = T_backward * (T_forward * state)
+    print(state2.get_state_matrix())
     assert (T_backward * (T_forward * state)) == state
 
 
@@ -72,6 +74,6 @@ def test_relaxed_state_can_not_relax_further(relax_factor):
 @given(relax_factor=hypothesis.strategies.floats(min_value=0.0))
 def test_excited_state_will_return_to_equilibrium(relax_factor):
     state = EpyG.epg(initial_size=256)
-    T = Operators.Transform(alpha=90.0, phi=0.0)
+    T = Operators.Transform(alpha=np.deg2rad(90.0), phi=0.0)
     E = Operators.Epsilon(TR_over_T1=np.inf, TR_over_T2=np.inf)
     assert E * (T * state) == state
