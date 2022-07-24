@@ -1,8 +1,8 @@
+import hypothesis
 import numpy as np
 import pytest
-import hypothesis
-from hypothesis import example, given, assume
-from epyg import Operators, EpyG
+from epyg import EpyG, Operators
+from hypothesis import assume, example, given
 
 
 @pytest.fixture

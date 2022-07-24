@@ -20,6 +20,7 @@ def test_state_comparison_inequal():
 def test_size():
     a = EpyG.epg(initial_size=128)
     assert a.size() == 128
+    assert len(a) == a.size()
 
 
 def test_extend():

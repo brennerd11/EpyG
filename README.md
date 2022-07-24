@@ -1,6 +1,7 @@
 EpyG - Extended Phase Graphs in Python
 ======================================
-Author: Daniel Brenner, DZNE Bonn, 2016
+Author: Daniel Brenner, (formerly) DZNE Bonn, 
+Started in: 2016, continued in 2022
 
 Extended Phase Graphs (EPG) are mathematical model of the signal evolution in magnetic resonance with particular applications
 imaging (MRI). 
@@ -11,15 +12,10 @@ The overall implementation follows the Operator notation as e.g. shown by Weigel
 The code is currently works in progress! Use with great care!
 
 ## Installation
-EpyG is a pure python module built upon numpy. Standard installation using
-```
-    python setup.py
-```
-should suffice therefore. Alternatively use pip to install directly from this repository
+EpyG is a pure python module built upon numpy.
 
-```
-    pip install git+https://path.to.this.repo/EpyG
-```
+it uses [poetry](https://python-poetry.org) as build and distribution tool.
+
 ## Package structure
 The EpyG package is structured in 3 modules
  * EpyG - the actual representation of an Extended Phase Grap
@@ -32,5 +28,6 @@ For first steps it is advised to look at the example ipython/jupyter notebook(s)
 
  
 ## Testing
-No unit testing is yet available :-( (shame on me). The example notebooks provide some basic vaildation for the scenarios
-of RF spoiled GRE sequences based on the analytical signal equations
+The folder tests/ contains a set of unit/integration tests to prove basic functionality.
+Further application examples can be found in the examples subfolder where Jupyter notebooks illustrating the major concepts are distributed
+

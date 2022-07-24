@@ -287,7 +287,14 @@ class Shift(Operator):
 
     """
 
-    def __init__(self, shifts=1, autogrow=True, compact=1e-6, *args, **kwargs):
+    def __init__(
+        self,
+        shifts: int = 1,
+        autogrow: bool = True,
+        compact: float = 1e-6,
+        *args,
+        **kwargs
+    ):
         super(Shift, self).__init__(*args, **kwargs)
         self.shifts = shifts
         self._autogrow = autogrow

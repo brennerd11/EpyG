@@ -113,7 +113,7 @@ class epg(object):
         """
         return self.state.shape[1]
 
-    def compact(self, threshold=1e-12, compact_memory=False) -> epg:
+    def compact(self, threshold: float = 1e-12, compact_memory: bool = False) -> epg:
         """
         Compacts the EPG -> i.e. zeroes all states below the given threshold and reduces the max_state attribute.
         Will only reduce memory when argument compact_memory is set
@@ -128,6 +128,7 @@ class epg(object):
 
         mask = np.abs(self.state) < threshold
         mask = np.all(mask, axis=0, keepdims=False)
+        mask[0] = True  # Keep at least the ground state
 
         self.state[:, mask] = 0.0
         try:
@@ -168,7 +169,7 @@ class epg(object):
         except IndexError:  # Everything that is not populated is 0!
             return np.array(0.0, dtype=self.state.dtype)
 
-    def get_f(self, order=0, rx_phase=0.0) -> np.dtype:
+    def get_f(self, order: int = 0, rx_phase: float = 0.0) -> np.dtype:
         """
         Get the transverse magnetisation component k while being detected with
         a given receiver phase. Useful for RF spoiling
@@ -282,7 +283,7 @@ class epg(object):
 
         return jsonrepr
 
-    def store_to_file(self, filename, **kwargs):
+    def store_to_file(self, filename: str, **kwargs):
         with open(filename, "w") as fp:
             json.dump(
                 self._repr_json_(),
@@ -294,7 +295,7 @@ class epg(object):
                 **kwargs,
             )
 
-    def __eq__(self, other_epg: epg):
+    def __eq__(self, other_epg: epg) -> bool:
         if not isinstance(other_epg, epg):
             return False
         if not self.max_state == other_epg.max_state:
