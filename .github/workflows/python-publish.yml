@@ -35,5 +35,6 @@ jobs:
     
     - name: Publish with poetry
       run: |
+        poetry version $(git describe --tags --abbrev=0)
         poetry publish -u __token__ -p ${{ secrets.PYPIDEPLOY }}
    
