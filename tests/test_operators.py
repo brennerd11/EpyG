@@ -10,6 +10,15 @@ def state():
     return EpyG.epg()
 
 
+def test_call_multiply():
+    a = EpyG.epg()
+    b = EpyG.epg()
+    T = Operators.Transform(alpha=90.0, phi=0.0)
+    T * a
+    T(b)
+    assert a == b
+
+
 def test_identity(state):
     I = Operators.Identity()
     assert (I * state) == state

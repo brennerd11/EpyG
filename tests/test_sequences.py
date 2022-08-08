@@ -1,8 +1,6 @@
-import hypothesis
 import numpy as np
 import pytest
 from epyg import EpyG, Operators
-from hypothesis import assume, example, given
 from numpy import deg2rad
 
 
@@ -17,15 +15,19 @@ def test_spin_echo_without_relaxation():
     T_refocus * state  # refoucs
 
     assert np.abs(state.get_f(0)) == pytest.approx(0.0, 1e-9)
+    assert np.abs(state.get_f(1)) == pytest.approx(0.0, 1e-9)
+    assert np.abs(state.get_z(0)) == pytest.approx(0.0, 1e-9)
 
     Shift * state
 
     assert np.abs(state.get_f(0)) == pytest.approx(1.0, 1e-9)
+    assert np.abs(state.get_z(0)) == pytest.approx(0.0, 1e-9)
     phase_echo1 = np.angle(state.get_f(0))
 
     Shift * state
     T_refocus * state  # refoucs
     assert np.abs(state.get_f(0)) == pytest.approx(0.0, 1e-9)
+    assert np.abs(state.get_z(0)) == pytest.approx(0.0, 1e-9)
 
     Shift * state
 
