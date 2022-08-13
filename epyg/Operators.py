@@ -47,7 +47,7 @@ class Operator(object):
             raise NotImplementedError("Can not apply operator to non-EPGs")
 
     def __call__(self, other):
-        return self.apply(other)
+        return self.__mul__(other)
 
     def _repr_json_(self):
         reprjsondict = OrderedDict()

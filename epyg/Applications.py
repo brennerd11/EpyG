@@ -46,7 +46,7 @@ def GRE_step(
     if observe:
         O = ops.Observer(f_states=(0,), z_states=(), name="ADC_echo")
     else:
-        O = ops.Observer(name="Identity")
+        O = ops.Identity(name="Identity")
     S = ops.Shift(shifts=1, autogrow=True, compact=1e-8, name="Spoil")
     E = ops.Epsilon(TR_over_T1=tr / t1, TR_over_T2=tr / t2, name="Relaxation")
     if d is not None:
