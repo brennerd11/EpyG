@@ -33,8 +33,6 @@ click = ">=8.0.0"
 mypy-extensions = ">=0.4.3"
 pathspec = ">=0.9.0"
 platformdirs = ">=2"
-tomli = {version = ">=1.1.0", markers = "python_full_version < \"3.11.0a7\""}
-typing-extensions = {version = ">=3.10.0.0", markers = "python_version < \"3.10\""}
 
 [package.extras]
 colorama = ["colorama (>=0.4.3)"]
@@ -69,22 +67,8 @@ category = "dev"
 optional = false
 python-versions = ">=3.7"
 
-[package.dependencies]
-tomli = {version = "*", optional = true, markers = "python_full_version <= \"3.11.0a6\" and extra == \"toml\""}
-
 [package.extras]
 toml = ["tomli"]
-
-[[package]]
-name = "exceptiongroup"
-version = "1.0.0"
-description = "Backport of PEP 654 (exception groups)"
-category = "dev"
-optional = false
-python-versions = ">=3.7"
-
-[package.extras]
-test = ["pytest (>=6)"]
 
 [[package]]
 name = "flake8"
@@ -116,7 +100,7 @@ dev = ["coverage", "hypothesis", "hypothesmith (>=0.2)", "pre-commit"]
 
 [[package]]
 name = "hypothesis"
-version = "6.56.4"
+version = "6.58.1"
 description = "A library for property-based testing"
 category = "dev"
 optional = false
@@ -124,24 +108,23 @@ python-versions = ">=3.7"
 
 [package.dependencies]
 attrs = ">=19.2.0"
-exceptiongroup = {version = ">=1.0.0", markers = "python_version < \"3.11\""}
 sortedcontainers = ">=2.1.0,<3.0.0"
 
 [package.extras]
-all = ["backports.zoneinfo (>=0.2.1)", "black (>=19.10b0)", "click (>=7.0)", "django (>=3.2)", "dpcontracts (>=0.4)", "importlib-metadata (>=3.6)", "lark-parser (>=0.6.5)", "libcst (>=0.3.16)", "numpy (>=1.9.0)", "pandas (>=1.0)", "pytest (>=4.6)", "python-dateutil (>=1.4)", "pytz (>=2014.1)", "redis (>=3.0.0)", "rich (>=9.0.0)", "tzdata (>=2022.5)"]
+all = ["backports.zoneinfo (>=0.2.1)", "black (>=19.10b0)", "click (>=7.0)", "django (>=3.2)", "dpcontracts (>=0.4)", "importlib-metadata (>=3.6)", "lark (>=0.10.1)", "libcst (>=0.3.16)", "numpy (>=1.9.0)", "pandas (>=1.0)", "pytest (>=4.6)", "python-dateutil (>=1.4)", "pytz (>=2014.1)", "redis (>=3.0.0)", "rich (>=9.0.0)", "tzdata (>=2022.6)"]
 cli = ["black (>=19.10b0)", "click (>=7.0)", "rich (>=9.0.0)"]
 codemods = ["libcst (>=0.3.16)"]
 dateutil = ["python-dateutil (>=1.4)"]
 django = ["django (>=3.2)"]
 dpcontracts = ["dpcontracts (>=0.4)"]
 ghostwriter = ["black (>=19.10b0)"]
-lark = ["lark-parser (>=0.6.5)"]
+lark = ["lark (>=0.10.1)"]
 numpy = ["numpy (>=1.9.0)"]
 pandas = ["pandas (>=1.0)"]
 pytest = ["pytest (>=4.6)"]
 pytz = ["pytz (>=2014.1)"]
 redis = ["redis (>=3.0.0)"]
-zoneinfo = ["backports.zoneinfo (>=0.2.1)", "tzdata (>=2022.5)"]
+zoneinfo = ["backports.zoneinfo (>=0.2.1)", "tzdata (>=2022.6)"]
 
 [[package]]
 name = "iniconfig"
@@ -305,18 +288,10 @@ category = "dev"
 optional = false
 python-versions = ">=3.7"
 
-[[package]]
-name = "typing-extensions"
-version = "4.3.0"
-description = "Backported and Experimental Type Hints for Python 3.7+"
-category = "dev"
-optional = false
-python-versions = ">=3.7"
-
 [metadata]
 lock-version = "1.1"
-python-versions = ">=3.8,<4.0"
-content-hash = "71999f14f66aba863123c6b5bc190feaf966fb69100aa86a4f18a66b737902f9"
+python-versions = "~3.11"
+content-hash = "72eee28e3de97fc33ae746e7ae400370106115eb3d471e963c1257eeaa678fd3"
 
 [metadata.files]
 atomicwrites = [
@@ -401,10 +376,6 @@ coverage = [
     {file = "coverage-6.4.3-pp36.pp37.pp38-none-any.whl", hash = "sha256:068d6f2a893af838291b8809c876973d885543411ea460f3e6886ac0ee941732"},
     {file = "coverage-6.4.3.tar.gz", hash = "sha256:ec2ae1f398e5aca655b7084392d23e80efb31f7a660d2eecf569fb9f79b3fb94"},
 ]
-exceptiongroup = [
-    {file = "exceptiongroup-1.0.0-py3-none-any.whl", hash = "sha256:2ac84b496be68464a2da60da518af3785fff8b7ec0d090a581604bc870bdee41"},
-    {file = "exceptiongroup-1.0.0.tar.gz", hash = "sha256:affbabf13fb6e98988c38d9c5650e701569fe3c1de3233cfb61c5f33774690ad"},
-]
 flake8 = [
     {file = "flake8-5.0.4-py2.py3-none-any.whl", hash = "sha256:7a1cf6b73744f5806ab95e526f6f0d8c01c66d7bbe349562d22dfca20610b248"},
     {file = "flake8-5.0.4.tar.gz", hash = "sha256:6fbe320aad8d6b95cec8b8e47bc933004678dc63095be98528b7bdd2a9f510db"},
@@ -414,8 +385,8 @@ flake8-bugbear = [
     {file = "flake8_bugbear-22.7.1-py3-none-any.whl", hash = "sha256:db5d7a831ef4412a224b26c708967ff816818cabae415e76b8c58df156c4b8e5"},
 ]
 hypothesis = [
-    {file = "hypothesis-6.56.4-py3-none-any.whl", hash = "sha256:67950103ee930c66673494b3671474a083ea71f1ebe8f0ff849ba8ad5317772d"},
-    {file = "hypothesis-6.56.4.tar.gz", hash = "sha256:313bc1c0f377ec6c98815d3237a69add7558eadee4effe4ed613d0ba36513a52"},
+    {file = "hypothesis-6.58.1-py3-none-any.whl", hash = "sha256:8738b9b38c2b2c214d965b07f29312047b970541d848cb97d2a58f79fd61fbe6"},
+    {file = "hypothesis-6.58.1.tar.gz", hash = "sha256:b5747497b2b352335e4dc51f1b113cfc90c49ffd174f2036f173edf8799e123a"},
 ]
 iniconfig = [
     {file = "iniconfig-1.1.1-py2.py3-none-any.whl", hash = "sha256:011e24c64b7f47f6ebd835bb12a743f2fbe9a26d4cecaa7f53bc4f35ee9da8b3"},
@@ -506,8 +477,4 @@ sortedcontainers = [
 tomli = [
     {file = "tomli-2.0.1-py3-none-any.whl", hash = "sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc"},
     {file = "tomli-2.0.1.tar.gz", hash = "sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f"},
-]
-typing-extensions = [
-    {file = "typing_extensions-4.3.0-py3-none-any.whl", hash = "sha256:25642c956049920a5aa49edcdd6ab1e06d7e5d467fc00e0506c44ac86fbfca02"},
-    {file = "typing_extensions-4.3.0.tar.gz", hash = "sha256:e6d2677a32f47fc7eb2795db1dd15c1f34eff616bcaf2cfb5e997f854fa1c4a6"},
 ]
