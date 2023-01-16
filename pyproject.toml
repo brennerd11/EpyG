@@ -21,7 +21,7 @@ pytest = "^7.1.2"
 black = "^22.10.0"
 flake8 = "^5.0.4"
 flake8-bugbear = "^22.7.1"
-hypothesis = "^6.56.4"
+hypothesis = "^6.62.1"
 pytest-cov = "^4.0.0"
 
 [[tool.mypy.overrides]]
