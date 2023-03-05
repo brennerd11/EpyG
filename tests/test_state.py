@@ -1,5 +1,6 @@
 import numpy as np
-from epyg import epyg, operators
+from epyg import EpyG as epyg
+from epyg import operators
 
 
 def test_state_comparison_equal():

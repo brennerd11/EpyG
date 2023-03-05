@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
-from epyg import epyg, operators
+from epyg import EpyG as epyg
+from epyg import operators
 from numpy import deg2rad
 
 
