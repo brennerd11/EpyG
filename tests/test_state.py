@@ -1,5 +1,5 @@
 import numpy as np
-from epyg import EpyG as epyg
+from epyg import epyg as epyg
 from epyg import operators
 
 
