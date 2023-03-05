@@ -1,7 +1,7 @@
 from __future__ import division, print_function
 
-import Operators as ops
-import EpyG as ep
+import epyg.operators as ops
+import epyg.epyg as ep
 import numpy as np
 
 
