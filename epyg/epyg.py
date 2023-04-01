@@ -59,8 +59,8 @@ class epg(object):
         self.state[
             2, 0
         ] = m0  # Use meq as equilibrium magnetisation; otherwise use the specified m0
-        self.max_state = 0  # Maximum order of occupied states
-        self.print_digits = (
+        self.max_state: int = 0  # Maximum order of occupied states
+        self.print_digits: int = (
             3  # Used in ipython notebooks to control precision/threshold for vis
         )
 
@@ -223,7 +223,7 @@ class epg(object):
 
         """
         cell_spec = "<td>{0:." + str(self.print_digits) + "f} </td>"
-        thresh = np.power(10, -self.print_digits)
+        thresh = 10 ^ (-self.print_digits)
 
         html = ["<table>"]
         html.append("<tr>")
