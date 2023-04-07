@@ -62,7 +62,7 @@ jobs:
 
     - name: Validate jupyter notebooks
       run: |
-        poetry run pytest --nbval
+        poetry run pytest ./examples/*.ipynb --nbval -v
     
     - name: Build with poetry (to ensure building is possible)
       run: |
