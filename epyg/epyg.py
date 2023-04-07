@@ -301,3 +301,6 @@ class epg(object):
         if not self.max_state == other_epg.max_state:
             return False
         return np.array_equal(self.state, other_epg.state, equal_nan=True)
+
+    def __repr__(self) -> str:
+        return f"epg(initial_size={self.size()})"

@@ -40,7 +40,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     
     - name: Install poetry
-      uses: abatilo/actions-poetry@v2.0.0
+      uses: abatilo/actions-poetry@v2.1.16
       with:
         poetry-version: 1.4
     
@@ -59,6 +59,10 @@ jobs:
     - name: Test with pytest
       run: |
         poetry run pytest
+
+    - name: Validate jupyter notebooks
+      run: |
+        poetry run pytest --nbval
     
     - name: Build with poetry (to ensure building is possible)
       run: |

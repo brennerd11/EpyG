@@ -10,7 +10,9 @@ This python implementation of the EPG formalism aim at being usable from a user 
 uses as well as providing adequate performance to allow 'real' applicaltions e.g. for more "heavy" simulations.
 The overall implementation follows the Operator notation as e.g. shown by Weigel.
 
-The code is currently works in progress! Use with great care!
+The package contains an extensive set of unit and integration tests to verify the algorithms are in accordance with expectations.
+
+The code is currently works in progress! Use with care!
 
 ## Installation
 
