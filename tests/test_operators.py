@@ -51,6 +51,28 @@ def test_trivial_flip(alpha, phi):
     assert magnetisation == pytest.approx(np.abs(np.sin(alpha)), 1e-8)
 
 
+def test_rotation_around_x_gives_magnetsiation_on_minus_y():
+    state: epyg.epg = epyg.epg(m0=1.0)
+    T = operators.Transform(alpha=np.deg2rad(90.0), phi=0)
+    T * state
+    x = np.real(state.get_f(0))
+    y = np.imag(state.get_f(0))
+
+    assert x == pytest.approx(0.0, 1e-9)
+    assert y == pytest.approx(-1.0, 1e-9)
+
+
+def test_rotation_around_y_gives_magnetsiation_on_plus_x():
+    state: epyg.epg = epyg.epg(m0=1.0)
+    T = operators.Transform(alpha=np.deg2rad(90.0), phi=np.deg2rad(90.0))
+    T * state
+    x = np.real(state.get_f(0))
+    y = np.imag(state.get_f(0))
+
+    assert x == pytest.approx(1.0, 1e-9)
+    assert y == pytest.approx(0.0, 1e-9)
+
+
 @given(shifts=hypothesis.strategies.integers(min_value=-128, max_value=-128))
 @example(shifts=1)
 @example(shifts=-1)

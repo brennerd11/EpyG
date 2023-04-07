@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+from typing import Optional
 
 import epyg.operators as ops
 import epyg.epyg as ep
@@ -6,7 +7,14 @@ import numpy as np
 
 
 def GRE_step(
-    TR, T1, T2, alpha_deg, phi_deg, linear_phase_inc_deg, d=None, observe=True
+    TR: float,
+    T1: float,
+    T2: float,
+    alpha_deg: float,
+    phi_deg: float,
+    linear_phase_inc_deg: float,
+    d: Optional[float] = None,
+    observe: bool = True,
 ):
     """
     Function the creates an CompositeOperator that mimics a traditional GRE sequence execution.
@@ -63,17 +71,17 @@ def GRE_step(
 
 
 def sim_mprage(
-    T1,
-    T2,
-    TR,
-    TI,
-    echo_spacing,
-    echo_train_length,
-    alpha_deg,
-    phase_inc_deg=50.0,
-    pre_loops=4,
-    inversion_angle_deg=180.0,
-    k_space_center=0.5,
+    T1: float,
+    T2: float,
+    TR: float,
+    TI: float,
+    echo_spacing: float,
+    echo_train_length: int,
+    alpha_deg: float,
+    phase_inc_deg: float = 50.0,
+    pre_loops: int = 4,
+    inversion_angle_deg: float = 180.0,
+    k_space_center: float = 0.5,
 ):
     """
     Simulates an MPRAGE sequence for a given set of parameters
@@ -127,12 +135,12 @@ def sim_mprage(
     )
     e = ep.EpyG(initial_size=ETL * 2)
 
-    for k in range(pre_loops):
+    for _ in range(pre_loops):
         o_gre.clear()  # We clear the observer on each iteration - just to avoid having the approach to steady state recorded
         inv * e  # Invert
         inv_spoil * e  # Spoil
         td * e  # Relax till first GRE
-        for i in range(ETL):
+        for _ in range(ETL):
             c_gre * e  # GRE loop
         td2 * e  # Relax till next inversion
 

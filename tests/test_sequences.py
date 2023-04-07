@@ -34,4 +34,25 @@ def test_spin_echo_without_relaxation():
 
     assert np.abs(state.get_f(0)) == pytest.approx(1.0, 1e-9)
     phase_echo2 = np.angle(state.get_f(0))
-    assert phase_echo2 - phase_echo1 == pytest.approx(np.pi, 1e-9)
+    assert phase_echo1 - phase_echo2 == pytest.approx(np.pi, 1e-9)
+
+
+def test_gradient_echo_without_relaxation():
+    state = epyg.epg()
+    alpha = deg2rad(90.0)
+    phase = deg2rad(45.0)
+    T_excite = operators.Transform(alpha=alpha, phi=phase)
+    Shift = operators.Shift(1)
+    Shift_back = operators.Shift(-1)
+
+    T_excite * state  # excite
+    Shift * state  # dephase
+
+    assert np.abs(state.get_f(0)) == pytest.approx(0.0, 1e-9)
+    assert np.abs(state.get_f(1)) == pytest.approx(1.0, 1e-9)
+    assert np.abs(state.get_z(0)) == pytest.approx(0.0, 1e-9)
+
+    Shift_back * state
+
+    assert np.abs(state.get_f(0)) == pytest.approx(1.0, 1e-9)
+    assert np.abs(state.get_z(0)) == pytest.approx(0.0, 1e-9)

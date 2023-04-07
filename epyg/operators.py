@@ -5,6 +5,7 @@ import uuid
 from collections import OrderedDict, deque
 
 import numpy as np
+from epyg.epyg import epg
 from numpy import cos, exp, sin
 
 
@@ -28,7 +29,7 @@ class Operator(object):
                 uuid.uuid4()
             )  # Unique names for easier possibility of serialisation
 
-    def apply(self, epg):
+    def apply(self, epg: epg):
         self.count += 1  # Count applications of the operator
         return epg
 
@@ -49,7 +50,10 @@ class Operator(object):
     def __call__(self, other):
         return self.__mul__(other)
 
-    def _repr_json_(self):
+    def __repr__(self) -> str:
+        return f"Operator {self.name}"
+
+    def _repr_json_(self) -> dict:
         reprjsondict = OrderedDict()
         reprjsondict["__type__"] = self.__class__.__name__
         reprjsondict["name"] = self.name
@@ -57,7 +61,7 @@ class Operator(object):
 
         return reprjsondict
 
-    def _repr_html_(self):
+    def _repr_html_(self) -> str:
         infodict = self._repr_json_()
         reprstr = ["<b>" + infodict["__type__"] + "</b>"]
         del infodict["__type__"]
@@ -88,7 +92,7 @@ class Operator(object):
                 ensure_ascii=True,
                 indent=4,
                 encoding="utf-8",
-                **kwargs
+                **kwargs,
             )
 
 
@@ -117,7 +121,7 @@ class Transform(Operator):
         return self._alpha
 
     @alpha.setter
-    def alpha(self, value):
+    def alpha(self, value: float):
         self._alpha = value
         self._changed = True
 
@@ -126,7 +130,7 @@ class Transform(Operator):
         return self._phi
 
     @phi.setter
-    def phi(self, value):
+    def phi(self, value: float):
         """
         Phase (in rad) of the Transform operator.
         Setting this value will cause recalculation of the internal rotation matrix.
@@ -146,7 +150,7 @@ class Transform(Operator):
         # Recaluclates the mixing matrix using the alpha and phi members
 
         # alpha = -self._alpha #This is required for correct rotation!
-        alpha = self._alpha
+        alpha = -self._alpha  # CHECK CHECK CHECK  !!!!!!!!!
         phi = self._phi
         co = cos(alpha)
         si = sin(alpha)
@@ -169,7 +173,7 @@ class Transform(Operator):
 
         self._changed = False
 
-    def apply(self, epg):
+    def apply(self, epg: epg):
         if self._changed:
             self.calc_matrix()
         # epg.state = np.dot(self._R, epg.state)
@@ -177,6 +181,9 @@ class Transform(Operator):
             self._R, epg.state[:, 0 : epg.max_state + 1]  # noqa: E203
         )
         return super(Transform, self).apply(epg)  # Invoke superclass method
+
+    def __repr__(self) -> str:
+        return f"Transform(name={self.name}, alpha={self.alpha}, phi={self.phi})"
 
     def _repr_json_(self):
         reprjsondict = super(Transform, self)._repr_json_()
@@ -200,7 +207,7 @@ class PhaseIncrementedTransform(Transform):
         return self._constant_phase_increment
 
     @constant_phase_increment.setter
-    def constant_phase_increment(self, value):
+    def constant_phase_increment(self, value: float):
         self._constant_phase_increment = value
 
     @property
@@ -211,11 +218,17 @@ class PhaseIncrementedTransform(Transform):
         return self._linear_phase_increment
 
     @linear_phase_increment.setter
-    def linear_phase_increment(self, value):
+    def linear_phase_increment(self, value: float):
         self._linear_phase_increment = value
 
     def __init__(
-        self, alpha, phi, linear_phase_inc=0.0, const_phase_inc=0.0, *args, **kwargs
+        self,
+        alpha: float,
+        phi: float,
+        linear_phase_inc: float = 0.0,
+        const_phase_inc: float = 0.0,
+        *args,
+        **kwargs,
     ):
         super(PhaseIncrementedTransform, self).__init__(alpha, phi, *args, **kwargs)
         self._constant_phase_increment = const_phase_inc
@@ -239,13 +252,20 @@ class PhaseIncrementedTransform(Transform):
         reprjsondict["constant_phase_increment"] = self.constant_phase_increment
         return reprjsondict
 
+    def __repr__(self) -> str:
+        return f"PhaseIncrementedTransform(name={self.name}, alpha={self.alpha}, phi={self.phi}, \
+                linear_phase_increment={self._linear_phase_increment}, \
+                constant_phase_increment={self.constant_phase_increment})"
+
 
 class Epsilon(Operator):
     """
     The "decay operator" applying relaxation and "regrowth" of the magnetisation components.
     """
 
-    def __init__(self, TR_over_T1, TR_over_T2, meq=1.0, *args, **kwargs):
+    def __init__(
+        self, TR_over_T1: float, TR_over_T2: float, meq: float = 1.0, *args, **kwargs
+    ):
         super(Epsilon, self).__init__(*args, **kwargs)
 
         assert TR_over_T1 >= 0.0, "Tachyons?"
@@ -293,7 +313,7 @@ class Shift(Operator):
         autogrow: bool = True,
         compact: float = 1e-6,
         *args,
-        **kwargs
+        **kwargs,
     ):
         super(Shift, self).__init__(*args, **kwargs)
         self.shifts = shifts
@@ -323,7 +343,7 @@ class Shift(Operator):
 
         # TODO Make multiple shifts happen without the for loop
         # REMARK Only shift the necessary parts of the EPG here -- does not seem to be impact speed significantly
-        for i in range(np.abs(self.shifts)):
+        for _ in range(np.abs(self.shifts)):
             if (
                 self.shifts > 0
             ):  # Here we handle positive shifts !!! NEED TO DOUBLE CHECK THIS !!!
@@ -358,6 +378,10 @@ class Shift(Operator):
 
         return reprjsondict
 
+    def __repr__(self) -> str:
+        return f"Sift(name={self.name}, shifts={self.shifts}, \
+                 autogrow={self._autogrow}, compact={self._compacting})"
+
 
 class Diffusion(Operator):
     """
@@ -366,7 +390,7 @@ class Diffusion(Operator):
     See e.g. Nehrke et al. MRM 2009 RF Spoiling for AFI paper
     """
 
-    def __init__(self, d, *args, **kwargs):
+    def __init__(self, d: float, *args, **kwargs):
         """
         :param d: dimension less diffusion damping constant - corresponding to
                   b*D were D is diffusivity and b is "the b-value"
@@ -375,7 +399,7 @@ class Diffusion(Operator):
         super(Diffusion, self).__init__(*args, **kwargs)
         self._d = d
 
-    def apply(self, epg):
+    def apply(self, epg: epg):
         """
         Applicaton of the operator.
         Uses nomenclature from Nehrke et al.
@@ -401,13 +425,16 @@ class Diffusion(Operator):
 
         return reprjsondict
 
+    def __repr__(self) -> str:
+        return f"Diffusion(name={self.name}, d={self._d})"
+
 
 class Spoil(Operator):
     """
     Non-physical spoiling operator that zeros all transverse states
     """
 
-    def __init__(self, compact_states=False, *args, **kwargs):
+    def __init__(self, compact_states: bool = False, *args, **kwargs):
         super(Spoil, self).__init__(*args, **kwargs)
         self.compact_states = compact_states
 
@@ -419,13 +446,23 @@ class Spoil(Operator):
 
         return super(Spoil, self).apply(epg)
 
+    def __repr__(self) -> str:
+        return f"Spoil(name={self.name}, compact_states={self.compact_states})"
+
 
 class Observer(Operator):
     """
     Stores EPG values - does NOT modify the EPG
     """
 
-    def __init__(self, f_states=(0,), z_states=(), rx_phase=0.0, *args, **kwargs):
+    def __init__(
+        self,
+        f_states: tuple = (0,),
+        z_states: tuple = (),
+        rx_phase: float = 0.0,
+        *args,
+        **kwargs,
+    ):
         super(Observer, self).__init__(*args, **kwargs)
         self._data_dict_f = OrderedDict()
         self._data_dict_z = OrderedDict()
@@ -435,14 +472,13 @@ class Observer(Operator):
         self._init_data_structures()
 
     def _init_data_structures(self):
-
         for f_state in self._fstates:
             self._data_dict_f[f_state] = []
 
         for z_state in self._zstates:
             self._data_dict_z[z_state] = []
 
-    def get_f(self, order):
+    def get_f(self, order: int):
         """
         Returns recorded transverse states
 
@@ -460,7 +496,7 @@ class Observer(Operator):
         except KeyError:
             raise KeyError("State was not recorded!")
 
-    def get_z(self, order):
+    def get_z(self, order: int):
         """
 
         Return recorded Z states
@@ -479,8 +515,7 @@ class Observer(Operator):
         except KeyError:
             raise KeyError("State was not recorded!")
 
-    def apply(self, epg):
-
+    def apply(self, epg: epg):
         for f_state in self._data_dict_f.keys():
             self._data_dict_f[f_state].append(
                 epg.get_f(order=f_state, rx_phase=self.rx_phase)
@@ -552,6 +587,9 @@ class Observer(Operator):
 
         return reprjsondict
 
+    def __repr__(self) -> str:
+        return f"Observer(name={self.name})"
+
 
 class SteadyStateObserver(Observer):
     """
@@ -570,7 +608,7 @@ class SteadyStateObserver(Observer):
         window_size=5,
         thresh=1e-3,
         *args,
-        **kwargs
+        **kwargs,
     ):
         super(SteadyStateObserver, self).__init__(
             f_states, z_states, rx_phase, *args, **kwargs
@@ -593,7 +631,6 @@ class SteadyStateObserver(Observer):
         return diffmetric < self._threshold
 
     def _check_states(self):
-
         for f_state in self._fstates:
             if not self._check_steady_state(self._data_dict_f[f_state]):
                 return False
@@ -617,7 +654,9 @@ class SteadyStateObserver(Observer):
 
 
 class FullEPGObserver(Operator):
-    def __init__(self, state_size=256, transient_size=256, *args, **kwargs):
+    def __init__(
+        self, state_size: int = 256, transient_size: int = 256, *args, **kwargs
+    ):
         super(FullEPGObserver, self).__init__(*args, **kwargs)
         self._state_size = state_size
         self._transient_szie = transient_size
@@ -625,7 +664,7 @@ class FullEPGObserver(Operator):
         self._f_matrix = np.zeros((2 * state_size, transient_size))
         self._z_matrix = np.zeros((state_size, transient_size))
 
-    def apply(self, epg):
+    def apply(self, epg: epg):
         raise NotImplementedError("Not yet...")
 
 
@@ -642,21 +681,20 @@ class CompositeOperator(Operator):
             self.append(op)
 
     def select(self, name):
-
         for op in self._operators:
             if op.name == name:
                 return op
         return None
 
-    def prepend(self, operator):
+    def prepend(self, operator: Operator):
         self._operators.insert(0, operator)
         return self
 
-    def append(self, operator):
+    def append(self, operator: Operator):
         self._operators.append(operator)
         return self
 
-    def apply(self, epg):
+    def apply(self, epg: epg):
         """
         Applies the composite operator to an EPG by consecutive application of the contained operators
 
@@ -716,20 +754,27 @@ class CompositeOperator(Operator):
 
         return " ".join(reprstr)
 
+    def __repr__(self) -> str:
+        repr = f"CompositeOperator(name={self.name}"
+        for op in self._operators:
+            repr += ", "
+            repr += op.__repr__()
+        return repr + ")"
+
 
 # TODO critically consider if we need this (untested) operator
 class LoopOperator(CompositeOperator):
-    def __init__(self, looplength=1, *args, **kwargs):
+    def __init__(self, looplength: int = 1, *args, **kwargs):
         super(LoopOperator, self).__init__(*args, **kwargs)
         self._looplength = looplength
 
-    def apply(self, epg):
+    def apply(self, epg: epg):
         last = epg
-        for i in range(self._looplength):
+        for _ in range(self._looplength):
             last = super(LoopOperator, self).apply(epg)
         return last
 
-    def set_loop_length(self, value):
+    def set_loop_length(self, value: int):
         assert value > 0, "Looplength must be positive or 0!"
 
     def _repr_json_(self):

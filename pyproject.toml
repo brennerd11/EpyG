@@ -24,6 +24,12 @@ flake8-bugbear = "^23.3.12"
 hypothesis = "^6.70.0"
 pytest-cov = "^4.0.0"
 
+[tool.poetry.group.dev.dependencies]
+nbval = "^0.10.0"
+jupyter = "^1.0.0"
+notebook = "^6.5.3"
+matplotlib = "^3.7.1"
+
 [[tool.mypy.overrides]]
 plugins = "numpy.typing.mypy_plugin"
 
