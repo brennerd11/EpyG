@@ -17,7 +17,7 @@ python = ">=3.8,<4.0"
 numpy = "^1.23.1"
 
 [tool.poetry.dev-dependencies]
-pytest = "^7.3.1"
+pytest = "^7.4.4"
 black = "^23.7.0"
 flake8 = "^5.0.4"
 flake8-bugbear = "^23.3.12"
